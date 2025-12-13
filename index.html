@@ -219,24 +219,29 @@ async function send(){
  const interval = startFakeProgress();
 
  const img=document.getElementById("img").files[0];
- let content=[{type:"text",text}];
- if(img){
-  const b=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(img); });
-  content.push({type:"image_url",image_url:{url:b}});
- }
 
  try{
+  // contentは文字列で渡す
+  const messages = [
+    {role:"system", content: persona(t.p)},
+    {role:"user", content: text}
+  ];
+
+  // 画像あればBase64追加
+  if(img){
+    const b=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(img); });
+    messages.push({role:"user", content: b});
+  }
+
   const r=await fetch(API,{
    method:"POST",
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({
     model:"gpt-4o-mini",
-    messages:[
-      {role:"system",content:persona(t.p)},
-      {role:"user",content}
-    ]
+    messages: messages
    })
   });
+
   const d=await r.json();
   t.his.pop();
   const ans=d.choices?.[0]?.message?.content||"エラー";
@@ -251,10 +256,9 @@ async function send(){
   if(t.title==="New chat") t.title=t.his[t.his.length-1].content.replace(/\n/g," ").slice(0,18);
   save(); render();
  }
-
-/* image gen unchanged */
 }
 
+/* image gen */
 async function gen(){
  const p=prompt("生成したい内容"); if(!p)return;
  const r=await fetch(API+"/image",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt:p}) });

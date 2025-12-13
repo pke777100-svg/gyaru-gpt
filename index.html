@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>KawaiiGPT 完全版 1ファイル</title>
+<title>KawaiiGPT 完全版</title>
 <style>
 :root{--bg:#f7f7f8;--side:#202123;--chat:#fff;--user:#dcf8c6;}
 .dark{--bg:#343541;--chat:#444654;--user:#2f7d4f;}
@@ -87,7 +87,7 @@ const menu=document.getElementById("menu");
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
 let cur=localStorage.getItem("CUR");
 let menuId=null;
-const API="https://lingering-tree-bd40.pke777100.workers.dev"; // デプロイ URL
+const API="https://floral-bread-e2b2.pke777100.workers.dev"; // ← 最新 Worker URL
 
 function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open"); side.classList.toggle("open",o); ov.classList.toggle("show",o);}
 function dark(){document.body.classList.toggle("dark"); localStorage.setItem("DARK",document.body.classList.contains("dark"));}

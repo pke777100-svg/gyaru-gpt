@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>kansaii GPT</title>
+
+<style>
+:root{--bg:#f7f7f8;--side:#202123;--chat:#fff;--user:#dcf8c6}
+.dark{--bg:#343541;--chat:#444654;--user:#2f7d4f}
+body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overflow:hidden}
+.app{display:flex;height:100%}
+.side{position:fixed;left:0;top:0;width:260px;height:100%;background:var(--side);color:#fff;transform:translateX(-100%);transition:.25s;z-index:20;display:flex;flex-direction:column}
+.side.open{transform:translateX(0)}
+.side h1{margin:10px;font-size:14px}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px}
+.list{flex:1;overflow:auto}
+.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;justify-content:space-between;cursor:pointer}
+.item.active{background:#2a2b32}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+.overlay.show{display:block}
+.main{flex:1;display:flex;flex-direction:column}
+.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px}
+.chat{flex:1;overflow:auto;padding:12px}
+.msg{display:flex;margin:8px 0}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap}
+.msg.user .bubble{background:var(--user)}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd}
+textarea{width:100%;font-size:16px}
+img.gen{max-width:70%;border-radius:10px}
+</style>
+</head>
+
+<body>
+
+<div class="overlay" id="ov" onclick="side(false)"></div>
+
+<div class="side" id="side">
+ <h1>kansaii GPT</h1>
+ <input placeholder="検索" oninput="render(this.value)">
+ <button onclick="newThread('joker')">🃏 ジョーカー</button>
+ <button onclick="newThread('harley')">💋 ハーレクイン</button>
+ <button onclick="newThread('ai')">🤖 無機質AI</button>
+ <div class="list" id="threads"></div>
+ <button onclick="share()">🔗 共有URL</button>
+ <button onclick="dark()">🌙 Dark</button>
+</div>
+
+<div class="app">
+ <div class="main">
+  <div class="top">
+   <span onclick="side()">☰</span><b>Chat</b>
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="controls">
+   <input type="file" id="img" accept="image/*"><br><br>
+   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+   <button onclick="gen()">🎨 画像生成</button>
+  </div>
+ </div>
+</div>
+
+<script>
+const API="https://kansaii-gpt-api.yourname.workers.dev"; // ←自分のWorkerに変更
+const S=document.getElementById("side"),O=document.getElementById("ov");
+const T=document.getElementById("threads"),C=document.getElementById("chat");
+const Q=document.getElementById("q");
+
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
+let cur=localStorage.getItem("CUR");
+
+function side(v){const o=v!==undefined?v:!S.classList.contains("open");S.classList.toggle("open",o);O.classList.toggle("show",o)}
+function dark(){document.body.classList.toggle("dark");localStorage.setItem("D",document.body.classList.contains("dark"))}
+if(localStorage.getItem("D")==="true")document.body.classList.add("dark");
+
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur)}
+
+function newThread(p){const id="t"+Date.now();threads.unshift({id,title:"New chat",p,his:[]});cur=id;save();render();side(false)}
+
+function render(f=""){
+ T.innerHTML="";
+ threads.filter(x=>x.title.includes(f)).forEach(x=>{
+  const d=document.createElement("div");
+  d.className="item"+(x.id===cur?" active":"");
+  d.innerHTML=`<span>${x.title}</span><span onclick="del('${x.id}')">🗑</span>`;
+  d.onclick=()=>{cur=x.id;save();render();side(false)}
+  d.ondblclick=()=>{const n=prompt("スレッド名",x.title);if(n){x.title=n;save();render()}}
+  T.appendChild(d);
+ });
+ C.innerHTML="";
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ t.his.forEach(m=>{
+  if(m.type==="img") C.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;
+  else C.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;
+ });
+ C.scrollTop=1e9;
+}
+
+function persona(p){
+ if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。";
+ if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。";
+ return"無機質。事実のみ簡潔。";
+}
+
+Q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}}
+
+async function send(){
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ const text=Q.value.trim(); if(!text)return;
+ Q.value="";
+ t.his.push({role:"user",content:text});
+ t.his.push({role:"assistant",content:"考え中……🧠"});
+ render();
+
+ const img=document.getElementById("img").files[0];
+ let content=[{type:"text",text}];
+ if(img){
+  const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img)});
+  content.push({type:"image_url",image_url:{url:b}});
+ }
+
+ const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({model:"gpt-4o-mini",messages:[
+   {role:"system",content:persona(t.p)},
+   {role:"user",content}
+  ]})
+ });
+ const d=await r.json();
+ t.his.pop();
+ const ans=d.choices?.[0]?.message?.content||"エラー";
+ t.his.push({role:"assistant",content:ans});
+ if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
+ save();render();
+}
+
+async function gen(){
+ const p=prompt("生成したい内容"); if(!p)return;
+ const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})});
+ const d=await r.json();
+ const url=d.data?.[0]?.url;
+ const t=threads.find(x=>x.id===cur);
+ t.his.push({type:"img",url}); save();render();
+}
+
+// 共有URL（会話をURLハッシュに圧縮保存）
+function share(){
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ const data=btoa(encodeURIComponent(JSON.stringify(t)));
+ location.hash=data;
+ alert("URLをコピーして共有してな");
+}
+
+// 共有URLから復元
+if(location.hash.length>1){
+ try{
+  const t=JSON.parse(decodeURIComponent(atob(location.hash.slice(1))));
+  threads=[t]; cur=t.id; save(); render();
+ }catch(e){}
+}
+
+if(!threads.length) newThread("joker"); else render();
+</script>
+</body>
+</html>

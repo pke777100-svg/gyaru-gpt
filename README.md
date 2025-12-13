@@ -6,38 +6,68 @@
 <style>
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 14px;
+  margin: 0;
+  background: #e5ddd5;
 }
-select, textarea, button {
+header {
+  background: #075e54;
+  color: #fff;
+  padding: 12px;
+  text-align: center;
+  font-weight: bold;
+}
+#chat {
+  padding: 10px;
+  height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+.bubble {
+  max-width: 80%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 10px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.user {
+  background: #dcf8c6;
+  margin-left: auto;
+}
+.ai {
+  background: #fff;
+  margin-right: auto;
+}
+#controls {
+  padding: 8px;
+  background: #f0f0f0;
+}
+textarea, select, button {
   width: 100%;
   font-size: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 button {
   padding: 10px;
   font-weight: bold;
 }
-pre {
-  white-space: pre-wrap;
-  background: #f3f3f3;
-  padding: 10px;
-}
 </style>
 </head>
 
 <body>
-<h2>🗣 kansaii GPT</h2>
+<header>🗣 kansaii GPT</header>
 
-<select id="persona">
-  <option value="gyaru">💅 関西ギャル</option>
-  <option value="man">😎 関西兄ちゃん</option>
-</select>
+<div id="chat"></div>
 
-<textarea id="q" rows="4" placeholder="聞きたいこと書いてな"></textarea>
-<button onclick="send()">送信</button>
-<button onclick="clearAll()">記憶リセット</button>
+<div id="controls">
+  <select id="persona">
+    <option value="gyaru">💅 関西ギャル</option>
+    <option value="man">😎 関西兄ちゃん</option>
+  </select>
 
-<pre id="a"></pre>
+  <textarea id="q" rows="2" placeholder="メッセージ入力"></textarea>
+  <button onclick="send()">送信</button>
+  <button onclick="clearAll()">履歴リセット</button>
+</div>
 
 <script>
 /* ===== APIキー ===== */
@@ -54,41 +84,36 @@ function getKey() {
 let history = JSON.parse(localStorage.getItem("CHAT_HISTORY") || "[]");
 let memory = localStorage.getItem("KANSAl_MEMORY") || "";
 
-/* ===== 人格 ===== */
-function personaPrompt(type) {
-  if (type === "man") {
-    return `
-あなたは関西弁で話す男のAI。
-落ち着いてて兄ちゃん気質。
-分かりやすく、無駄に煽らず、的確。
-`;
-  }
-  return `
-あなたは関西弁オンリーのノリ強めギャルAI。
-距離感近く、テンポ良くツッコミ入れる。
-`;
+/* ===== 表示 ===== */
+const chat = document.getElementById("chat");
+
+function addBubble(text, cls) {
+  const div = document.createElement("div");
+  div.className = "bubble " + cls;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-/* ===== 複合思考（正式実装） ===== */
+/* ===== 人格 ===== */
+function personaPrompt(type) {
+  return type === "man"
+    ? "あなたは落ち着いた関西弁の兄ちゃんAI。的確で分かりやすい。"
+    : "あなたはノリ良し関西ギャルAI。テンポ良くツッコむ。";
+}
+
+/* ===== 複合思考 ===== */
 function systemPrompt() {
-  const persona = personaPrompt(document.getElementById("persona").value);
   return `
 あなたは統合司令塔AI「kansaii GPT」。
 
-内部では以下の3視点で思考せよ（出力は統合結果のみ）。
+【GPT視点】論理と正確性
+【Gemini視点】整理と分かりやすさ
+【Grok視点】本質ツッコミ
 
-【GPT視点】
-論理・網羅・正確性を重視。
+${personaPrompt(document.getElementById("persona").value)}
 
-【Gemini視点】
-整理力・初心者への分かりやすさ重視。
-
-【Grok視点】
-本質的ツッコミ・大胆な仮説。
-
-${persona}
-
-【記憶メモ】
+【記憶】
 ${memory}
 `;
 }
@@ -102,6 +127,14 @@ async function send() {
   document.getElementById("q").value = "";
 
   history.push({ role: "user", content: q });
+  addBubble(q, "user");
+
+  // 考え中表示
+  const thinking = document.createElement("div");
+  thinking.className = "bubble ai";
+  thinking.textContent = "考え中……🧠";
+  chat.appendChild(thinking);
+  chat.scrollTop = chat.scrollHeight;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -121,9 +154,11 @@ async function send() {
   const data = await res.json();
   const ans = data.choices?.[0]?.message?.content || "エラーやで";
 
+  chat.removeChild(thinking);
+  addBubble(ans, "ai");
+
   history.push({ role: "assistant", content: ans });
   localStorage.setItem("CHAT_HISTORY", JSON.stringify(history));
-  document.getElementById("a").textContent = ans;
 
   learn(q, ans);
 }
@@ -135,13 +170,13 @@ function learn(u, a) {
   localStorage.setItem("KANSAl_MEMORY", memory);
 }
 
-/* ===== 全消し ===== */
+/* ===== リセット ===== */
 function clearAll() {
-  if (confirm("全部消すで？")) {
+  if (confirm("履歴全部消すで？")) {
     localStorage.clear();
+    chat.innerHTML = "";
     history = [];
     memory = "";
-    document.getElementById("a").textContent = "リセット完了や";
   }
 }
 </script>

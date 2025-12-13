@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>KawaiiGPT 即動作版</title>
+<title>KawaiiGPT 完全版 1ファイル</title>
 <style>
 :root{--bg:#f7f7f8;--side:#202123;--chat:#fff;--user:#dcf8c6;}
 .dark{--bg:#343541;--chat:#444654;--user:#2f7d4f;}
@@ -30,9 +30,9 @@ body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overf
 .msg.ai .bubble{background:var(--chat);border:1px solid #ddd;}
 .controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;}
 textarea{width:100%;font-size:16px;}
-#spinner{display:none;width:24px;height:24px;border:4px solid #ccc;border-top-color:#007bff;border-radius:50%;animation:spin 1s linear infinite;margin-left:10px;}
+#spinner{display:none;width:24px;height:24px;border:4px solid #ccc;border-top-color:#007bff;border-radius:50%;animation:spin 1s linear infinite;margin-left:10px;vertical-align:middle;}
 @keyframes spin{100%{transform:rotate(360deg);}}
-#progressContainer{width:100%;height:18px;background:#eee;border-radius:9px;overflow:hidden;margin-top:6px;}
+#progressContainer{width:100%;height:18px;background:#eee;border-radius:9px;margin-top:6px;}
 #progressBar{width:0%;height:100%;background:#007bff;color:#fff;text-align:center;line-height:18px;font-size:12px;}
 img.gen{max-width:70%;border-radius:10px;}
 .menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px;}
@@ -42,7 +42,6 @@ img.gen{max-width:70%;border-radius:10px;}
 <body>
 
 <div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
-
 <div class="side" id="side">
  <h1>KawaiiGPT</h1>
  <input placeholder="検索" oninput="render(this.value)">
@@ -61,8 +60,7 @@ img.gen{max-width:70%;border-radius:10px;}
   </div>
   <div class="chat" id="chat"></div>
   <div class="controls">
-   <input type="file" id="img" accept="image/*"><br>
-   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea><br>
    <button onclick="send()">送信</button>
    <button onclick="gen()">🎨 画像生成</button>
    <div id="progressContainer"><div id="progressBar">0%</div></div>
@@ -77,27 +75,23 @@ img.gen{max-width:70%;border-radius:10px;}
 </div>
 
 <script>
+const side=document.getElementById("side");
+const ov=document.getElementById("ov");
+const threadsDiv=document.getElementById("threads");
 const chat=document.getElementById("chat");
 const q=document.getElementById("q");
 const spinner=document.getElementById("spinner");
 const progressBar=document.getElementById("progressBar");
-const side=document.getElementById("side");
-const ov=document.getElementById("ov");
-const threadsDiv=document.getElementById("threads");
 const menu=document.getElementById("menu");
-const imgInput=document.getElementById("img");
 
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
 let cur=localStorage.getItem("CUR");
 let menuId=null;
-
-// ★Worker URL をコピペ済み
-const API="https://lingering-tree-bd40.pke777100.workers.dev";
+const API="https://lingering-tree-bd40.pke777100.workers.dev"; // デプロイ URL
 
 function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open"); side.classList.toggle("open",o); ov.classList.toggle("show",o);}
 function dark(){document.body.classList.toggle("dark"); localStorage.setItem("DARK",document.body.classList.contains("dark"));}
 if(localStorage.getItem("DARK")==="true")document.body.classList.add("dark");
-
 function save(){ localStorage.setItem("THREADS",JSON.stringify(threads)); localStorage.setItem("CUR",cur); }
 
 function newThread(p){ const id="t"+Date.now(); threads.unshift({id,title:"New chat",p,his:[]}); cur=id; save(); render(); toggleSide(false); }
@@ -125,10 +119,14 @@ function render(f=""){
  chat.scrollTop=1e9;
 }
 
-function persona(p){ if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。"; if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。"; return"無機質で簡潔。"; }
+function persona(p){
+ if(p==="joker") return "関西弁のラスボスジョーカー。皮肉とブラックジョーク。";
+ if(p==="harley") return "関西弁のハーレクイン。狂気と挑発。";
+ return "無機質で簡潔。";
+}
 
 function updateProgress(value){ progressBar.style.width=value+'%'; progressBar.textContent=value+'%'; }
-function startFakeProgress(){let progress=0;return setInterval(()=>{if(progress<90){progress+=Math.floor(Math.random()*5)+2;if(progress>90)progress=90;updateProgress(progress);}},150);}
+function startFakeProgress(){let progress=0;return setInterval(()=>{if(progress<90){progress+=Math.floor(Math.random()*5)+2;if(progress>90)progress=90;updateProgress(progress);}},150); }
 
 q.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } });
 
@@ -143,10 +141,14 @@ async function send(){
  const interval=startFakeProgress();
 
  try{
-  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"chat",payload:{model:"gpt-4o-mini",messages:[{role:"system",content:persona(t.p)},{role:"user",content:text}]}})});
-  const d=await r.json();
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({type:"chat",payload:{model:"gpt-4o-mini",messages:[{role:"system",content:persona(t.p)},{role:"user",content:text}]}})
+  });
+  const d=await r.json().catch(()=>({error:"Invalid JSON"}));
   t.his.pop();
-  const ans=d.choices?.[0]?.message?.content||"エラー";
+  const ans=d.choices?.[0]?.message?.content||("エラー: "+(d.error||"不明"));
   t.his.push({role:"assistant",content:ans});
   updateProgress(100);
  }catch(err){
@@ -162,15 +164,19 @@ async function send(){
 async function gen(){
  const t=threads.find(x=>x.id===cur); if(!t)return;
  const promptText = prompt("生成したい内容"); if(!promptText) return;
-
  spinner.style.display="inline-block"; updateProgress(0);
  const interval=startFakeProgress();
 
  try{
-  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"image",payload:{prompt:promptText,n:1,size:"1024x1024"}})});
-  const d=await r.json();
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({type:"image",payload:{prompt:promptText,n:1,size:"1024x1024"}})
+  });
+  const d=await r.json().catch(()=>({error:"Invalid JSON"}));
   const url=d.data?.[0]?.url;
   if(url) t.his.push({type:"img",url});
+  else alert("画像生成エラー: "+(d.error||"不明"));
   updateProgress(100);
  }catch(err){
   alert("画像生成エラー: "+err.message);

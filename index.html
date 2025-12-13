@@ -91,12 +91,10 @@ function renameThread(){const t=threads.find(x=>x.id===menuId); if(!t)return; co
 function deleteThread(){threads=threads.filter(x=>x.id!==menuId); if(cur===menuId)cur=threads[0]?.id||null; save();render();closeMenu();}
 function render(f=""){threadsDiv.innerHTML="";threads.filter(t=>t.title.includes(f)).forEach(t=>{const d=document.createElement("div");d.className="item"+(t.id===cur?" active":"");d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`; d.onclick=()=>{cur=t.id;save();render();toggleSide(false)}; d.querySelector(".more").onclick=e=>openMenu(e,t.id);threadsDiv.appendChild(d);}); chat.innerHTML=""; const t=threads.find(x=>x.id===cur); if(!t)return; t.his.forEach(m=>{if(m.type==="img"){chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;}else{chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;}}); chat.scrollTop=1e9;}
 function persona(p){if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。";if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。";return"無機質で事実のみ簡潔。";}
-
-// 進捗更新
 function updateProgress(value){const bar=document.getElementById("progressBar"); bar.style.width=value+"%"; bar.textContent=value+"%";}
 
-// 送信
 q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
+
 async function send(){
  const t=threads.find(x=>x.id===cur); if(!t)return;
  const text=q.value.trim(); if(!text)return;
@@ -109,41 +107,59 @@ async function send(){
  spinner.style.display="inline-block";
  updateProgress(0);
 
- const img=document.getElementById("img").files[0];
- let content=[{type:"text",text}];
- if(img){
-  const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img);});
-  content.push({type:"image_url",image_url:{url:b}});
+ // 疑似進捗バー
+ let progress=0;
+ const interval=setInterval(()=>{
+   if(progress<90){progress+=Math.floor(Math.random()*5)+2; if(progress>90) progress=90; updateProgress(progress);}
+ },150);
+
+ try{
+   const img=document.getElementById("img").files[0];
+   let content=[{type:"text",text}];
+   if(img){
+     const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img);});
+     content.push({type:"image_url",image_url:{url:b}});
+   }
+
+   const r=await fetch(API,{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({
+       model:"gpt-4o-mini",
+       messages:[
+         {role:"system",content:persona(t.p)},
+         {role:"user",content}
+       ]
+     })
+   });
+
+   const d=await r.json();
+   t.his.pop();
+   const ans=d.choices?.[0]?.message?.content||"エラー";
+   t.his.push({role:"assistant",content:ans});
+
+   updateProgress(100);
+ }catch(err){
+   t.his.push({role:"assistant",content:"エラー: "+err.message});
+   updateProgress(100);
+ }finally{
+   spinner.style.display="none";
+   clearInterval(interval);
+
+   const ansText=t.his[t.his.length-1].content;
+   const blob=new Blob([ansText],{type:"text/plain"});
+   const url=URL.createObjectURL(blob);
+   const link=document.createElement("a");
+   link.href=url;
+   link.download="KawaiiGPT_result.txt";
+   link.textContent="生成完了！クリックしてダウンロード";
+   chat.appendChild(link);
+
+   if(t.title==="New chat") t.title=ansText.replace(/\n/g," ").slice(0,18);
+   save(); render();
  }
-
- // API呼び出し
- const r=await fetch(API,{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:persona(t.p)},{role:"user",content}]})
- });
- updateProgress(70);
- const d=await r.json();
- t.his.pop();
- const ans=d.choices?.[0]?.message?.content||"エラー";
- t.his.push({role:"assistant",content:ans});
- updateProgress(100);
- spinner.style.display="none";
-
- // ダウンロードリンク
- const blob=new Blob([ans],{type:"text/plain"});
- const url=URL.createObjectURL(blob);
- const link=document.createElement("a");
- link.href=url;
- link.download="KawaiiGPT_result.txt";
- link.textContent="生成完了！クリックしてダウンロード";
- chat.appendChild(link);
-
- if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
- save(); render();
 }
 
-// 初期化
 if(!threads.length)newThread("joker"); else render();
 </script>
 </body>

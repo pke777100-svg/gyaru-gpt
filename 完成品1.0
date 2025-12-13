@@ -8,132 +8,106 @@ content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no
 
 <style>
 :root{
- --bg:#f7f7f8;
- --side:#202123;
- --chat:#ffffff;
- --text:#111;
- --user:#dcf8c6;
+ --bg:#f7f7f8; --side:#202123; --chat:#ffffff;
+ --text:#111; --user:#dcf8c6;
 }
 .dark{
- --bg:#343541;
- --chat:#444654;
- --text:#eee;
- --user:#2f7d4f;
+ --bg:#343541; --chat:#444654;
+ --text:#eee; --user:#2f7d4f;
 }
-
-*{-webkit-text-size-adjust:100%}
 body{
- margin:0;
- font-family:-apple-system;
- background:var(--bg);
- height:100svh;
- overflow:hidden;
+ margin:0;font-family:-apple-system;
+ background:var(--bg);height:100svh;overflow:hidden
 }
 .app{height:100%;display:flex}
 
-/* ===== sidebar ===== */
+/* sidebar */
 .side{
- position:fixed;
- top:0; left:0;
- height:100%;
- width:260px;
- background:var(--side);
- color:#fff;
- z-index:30;
- transform:translateX(-100%);
- transition:.25s;
- display:flex;
- flex-direction:column;
+ position:fixed;top:0;left:0;height:100%;width:260px;
+ background:var(--side);color:#fff;z-index:30;
+ transform:translateX(-100%);transition:.25s;
+ display:flex;flex-direction:column
 }
 .side.open{transform:translateX(0)}
-
-.side h1{
- font-size:14px;
- padding:12px;
- margin:0;
- border-bottom:1px solid #333;
-}
+.side h1{font-size:14px;padding:12px;margin:0;border-bottom:1px solid #333}
 .side button{
- margin:8px;
- background:#2a2b32;
- color:#fff;
- border:0;
- padding:8px;
- border-radius:6px;
+ margin:8px;background:#2a2b32;color:#fff;
+ border:0;padding:8px;border-radius:6px
 }
 .list{flex:1;overflow:auto}
 .item{
- padding:10px 12px;
- border-bottom:1px solid #2a2b32;
- cursor:pointer;
+ padding:10px 12px;border-bottom:1px solid #2a2b32;
+ cursor:pointer
 }
 .item.active{background:#2a2b32}
 
 /* overlay */
 .overlay{
- position:fixed;
- inset:0;
- background:rgba(0,0,0,.45);
- z-index:20;
- display:none;
+ position:fixed;inset:0;background:rgba(0,0,0,.45);
+ z-index:20;display:none
 }
 .overlay.show{display:block}
 
-/* ===== main ===== */
-.main{
- flex:1;
- display:flex;
- flex-direction:column;
-}
+/* main */
+.main{flex:1;display:flex;flex-direction:column}
 .top{
- display:flex;
- align-items:center;
- gap:10px;
- padding:10px;
- background:var(--chat);
- border-bottom:1px solid #ddd;
+ display:flex;align-items:center;gap:10px;
+ padding:10px;background:var(--chat);
+ border-bottom:1px solid #ddd
 }
-.menu{
- font-size:22px;
- cursor:pointer;
-}
-.chat{
- flex:1;
- overflow:auto;
- padding:12px;
-}
+.menu{font-size:22px;cursor:pointer}
+.chat{flex:1;overflow:auto;padding:12px}
 .msg{display:flex;gap:6px;margin:8px 0}
 .msg.user{justify-content:flex-end}
 .bubble{
- max-width:70%;
- padding:10px;
- border-radius:10px;
- white-space:pre-wrap;
+ max-width:70%;padding:10px;border-radius:10px;
+ white-space:pre-wrap
 }
 .msg.user .bubble{background:var(--user)}
-.msg.ai .bubble{
- background:var(--chat);
- border:1px solid #ddd;
-}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
 .controls{
- padding:10px;
- background:var(--chat);
- border-top:1px solid #ddd;
+ padding:10px;background:var(--chat);
+ border-top:1px solid #ddd
 }
-textarea{
- width:100%;
- font-size:16px;
- padding:8px;
+textarea{width:100%;font-size:16px;padding:8px}
+
+/* persona modal */
+.modal{
+ position:fixed;inset:0;background:rgba(0,0,0,.5);
+ display:none;align-items:center;justify-content:center;
+ z-index:40
 }
+.modal.show{display:flex}
+.box{
+ background:#fff;border-radius:12px;padding:20px;
+ width:80%;max-width:300px;text-align:center
+}
+.box h2{margin-top:0}
+.pbtn{
+ font-size:18px;padding:12px;margin:10px 0;
+ border-radius:10px;border:0;width:100%
+}
+.joker{background:#000;color:#fff}
+.harley{background:#ff4fa3;color:#fff}
 </style>
 </head>
 
 <body>
+
+<!-- persona select -->
+<div class="modal" id="personaModal">
+ <div class="box">
+  <h2>人格選んでな</h2>
+  <button class="pbtn joker" onclick="createThread('joker')">🃏 ジョーカー</button>
+  <button class="pbtn harley" onclick="createThread('harley')">💋 ハーレクイン</button>
+ </div>
+</div>
+
 <div class="overlay" id="overlay" onclick="toggleSide(false)"></div>
 
 <div class="side" id="side">
  <h1>🎭 LAST BOSS</h1>
- <button onclick="newThread()">＋ New chat</button>
+ <button onclick="openPersona()">＋ New chat</button>
  <div class="list" id="threads"></div>
  <button onclick="toggleDark()">🌙 Dark</button>
 </div>
@@ -147,12 +121,19 @@ textarea{
   <div class="chat" id="chat"></div>
   <div class="controls">
    <textarea id="q" rows="2"
-   placeholder="Enter送信 / Shift+Enter改行"></textarea>
+    placeholder="Enter送信 / Shift+Enter改行"></textarea>
   </div>
  </div>
 </div>
 
 <script>
+const side=document.getElementById("side");
+const overlay=document.getElementById("overlay");
+const chat=document.getElementById("chat");
+const threadsDiv=document.getElementById("threads");
+const modal=document.getElementById("personaModal");
+const q=document.getElementById("q");
+
 /* sidebar */
 function toggleSide(force){
  const open=force!==undefined?force:!side.classList.contains("open");
@@ -161,39 +142,43 @@ function toggleSide(force){
 }
 
 /* dark */
-if(localStorage.getItem("DARK")==="1")
- document.body.classList.add("dark");
+if(localStorage.getItem("DARK")==="1")document.body.classList.add("dark");
 function toggleDark(){
  document.body.classList.toggle("dark");
  localStorage.setItem("DARK",
   document.body.classList.contains("dark")?"1":"0");
 }
 
-/* threads */
+/* data */
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
 let current=localStorage.getItem("CUR");
 
+/* persona */
+function openPersona(){modal.classList.add("show")}
+function createThread(persona){
+ modal.classList.remove("show");
+ const id="t"+Date.now();
+ threads.unshift({id,title:"New chat",his:[],persona});
+ current=id;save();render();toggleSide(false);
+}
+
+/* storage */
 function save(){
  localStorage.setItem("THREADS",JSON.stringify(threads));
  localStorage.setItem("CUR",current);
 }
-function newThread(){
- const persona=prompt("人格 joker / harley","joker")||"joker";
- const id="t"+Date.now();
- threads.unshift({id,title:"New chat",his:[],persona});
- current=id; save(); render();
-}
+
+/* render */
 function render(){
  threadsDiv.innerHTML="";
  threads.forEach(t=>{
   const d=document.createElement("div");
   d.className="item"+(t.id===current?" active":"");
-  d.textContent=t.title;
+  d.textContent=(t.persona==="joker"?"🃏 ":"💋 ")+t.title;
   d.onclick=()=>{
-   current=t.id; save(); render();
-   toggleSide(false);
+   current=t.id;save();render();toggleSide(false);
   };
-  threadsDiv.append(d);
+  threadsDiv.appendChild(d);
  });
  chat.innerHTML="";
  const t=threads.find(x=>x.id===current);
@@ -201,8 +186,8 @@ function render(){
  t.his.forEach(m=>{
   chat.innerHTML+=
    `<div class="msg ${m.role}">
-    <div class="bubble">${m.content}</div>
-   </div>`;
+     <div class="bubble">${m.content}</div>
+    </div>`;
  });
  chat.scrollTop=1e9;
 }
@@ -218,8 +203,10 @@ q.onkeydown=e=>{
   e.preventDefault();send();
  }
 };
+
 async function send(){
  const t=threads.find(x=>x.id===current);
+ if(!t)return;
  const text=q.value.trim(); if(!text)return;
  q.value="";
  t.his.push({role:"user",content:text});
@@ -248,11 +235,11 @@ async function send(){
  t.his.push({role:"assistant",
   content:d.choices?.[0]?.message?.content||"エラー"});
  t.title=t.title==="New chat"?text.slice(0,20):t.title;
- save(); render();
+ save();render();
 }
 
 /* init */
-if(!threads.length)newThread(); render();
+if(!threads.length)openPersona(); else render();
 </script>
 </body>
 </html>

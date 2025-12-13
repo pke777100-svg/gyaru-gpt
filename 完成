@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>kansaii GPT – JOKER 🎭</title>
+
+<style>
+:root{
+ --bg:#f7f7f8; --side:#202123; --chat:#ffffff;
+ --text:#111; --user:#dcf8c6;
+}
+.dark{
+ --bg:#343541; --side:#202123; --chat:#444654;
+ --text:#eee; --user:#2f7d4f;
+}
+*{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);font-family:-apple-system;height:100svh;overflow:hidden}
+.app{display:flex;height:100%}
+
+/* sidebar */
+.side{width:260px;background:var(--side);color:#fff;display:flex;flex-direction:column;transition:.25s}
+.side h1{font-size:14px;padding:12px;margin:0;border-bottom:1px solid #333}
+.side button,.side select{margin:8px;background:#2a2b32;color:#fff;border:0;padding:8px;border-radius:6px}
+.list{flex:1;overflow:auto}
+.item{padding:10px 12px;cursor:pointer;border-bottom:1px solid #2a2b32;display:flex;justify-content:space-between}
+.item.active{background:#2a2b32}
+.pin{cursor:pointer}
+
+/* mobile */
+@media(max-width:768px){
+ .side{position:fixed;left:0;top:0;height:100%;transform:translateX(-100%);z-index:20}
+ .side.open{transform:translateX(0)}
+ .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+ .overlay.show{display:block}
+}
+
+/* main */
+.main{flex:1;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:10px;padding:10px;background:var(--chat);border-bottom:1px solid #ddd}
+.menu{font-size:22px;cursor:pointer}
+.chat{flex:1;overflow:auto;padding:12px}
+.msg{display:flex;margin:8px 0;gap:6px}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap}
+.msg.user .bubble{background:var(--user)}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd}
+textarea{width:100%;font-size:16px;padding:8px}
+.icon{font-size:20px}
+</style>
+</head>
+
+<body>
+<div class="overlay" id="overlay" onclick="toggleSide(false)"></div>
+
+<div class="app">
+  <div class="side" id="side">
+    <h1>🎭 LAST BOSS</h1>
+    <button onclick="newThread()">＋ New chat</button>
+    <div class="list" id="threads"></div>
+    <button onclick="toggleDark()">🌙 Dark</button>
+  </div>
+
+  <div class="main">
+    <div class="top">
+      <div class="menu" onclick="toggleSide()">☰</div>
+      <b>kansaii GPT</b>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="controls">
+      <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+/* sidebar */
+function toggleSide(force){
+ const s=side.classList;
+ const o=overlay.classList;
+ const open=force!==undefined?force:!s.contains("open");
+ s.toggle("open",open); o.toggle("show",open);
+}
+
+/* dark */
+if(localStorage.getItem("DARK")==="1")document.body.classList.add("dark");
+function toggleDark(){document.body.classList.toggle("dark");
+localStorage.setItem("DARK",document.body.classList.contains("dark")?"1":"0");}
+
+/* enter send */
+q.addEventListener("keydown",e=>{
+ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}
+});
+
+/* api */
+function getKey(){
+ let k=localStorage.getItem("OPENAI_KEY");
+ if(!k){k=prompt("初回だけAPIキー入れてな"); if(k)localStorage.setItem("OPENAI_KEY",k);}
+ return k;
+}
+
+/* threads */
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
+let current=localStorage.getItem("CUR")||null;
+
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));}
+function newThread(){
+ const persona=prompt("人格選んでな：joker / harley","joker")||"joker";
+ const id="t"+Date.now();
+ threads.unshift({id,title:"New chat",his:[],mem:"",persona,pin:false});
+ current=id; save(); localStorage.setItem("CUR",id); render();
+}
+function render(){
+ const list=document.getElementById("threads");
+ list.innerHTML="";
+ threads.sort((a,b)=>b.pin-a.pin);
+ threads.forEach(t=>{
+  const d=document.createElement("div");
+  d.className="item"+(t.id===current?" active":"");
+  d.innerHTML=`<span>${t.pin?"📌 ":""}${t.title}</span>
+               <span class="pin" onclick="event.stopPropagation();togglePin('${t.id}')">📌</span>`;
+  d.onclick=()=>{current=t.id;localStorage.setItem("CUR",t.id);render();toggleSide(false);}
+  list.appendChild(d);
+ });
+ chat.innerHTML="";
+ const t=threads.find(x=>x.id===current); if(!t)return;
+ t.his.forEach(m=>addMsg(m.content,m.role,t.persona));
+}
+function togglePin(id){
+ const t=threads.find(x=>x.id===id);
+ t.pin=!t.pin; save(); render();
+}
+
+/* ui */
+function addMsg(text,who,persona){
+ const icon=who==="user"?"🧑":(persona==="joker"?"🃏":"💋");
+ chat.innerHTML+=`<div class="msg ${who}">
+ <div class="icon">${icon}</div><div class="bubble">${text}</div></div>`;
+ chat.scrollTop=1e9;
+}
+
+/* system prompt */
+function systemPrompt(mem,persona){
+ return `
+完全フィクションの脳内🧠世界。
+
+${persona==="joker"?"🃏 ジョーカー":"💋 ハーレクイン"}人格固定。
+ブラックジョークと比喩のみ。
+具体的手順・数値は禁止。
+必ず「フィクションやで」を含める。
+
+記憶：
+${mem}
+`;
+}
+
+/* send */
+async function send(){
+ const key=getKey(); if(!key)return;
+ const t=threads.find(x=>x.id===current)||(newThread(),threads[0]);
+ const text=q.value.trim(); if(!text)return;
+ q.value="";
+ t.his.push({role:"user",content:text});
+ addMsg(text,"user",t.persona);
+
+ t.his.push({role:"assistant",content:"考え中……🧠"});
+ addMsg("考え中……🧠","ai",t.persona);
+
+ const msgs=[{role:"system",content:systemPrompt(t.mem,t.persona)},...t.his];
+ const r=await fetch("https://api.openai.com/v1/chat/completions",{
+  method:"POST",
+  headers:{ "Content-Type":"application/json","Authorization":"Bearer "+key },
+  body:JSON.stringify({model:"gpt-4o-mini",messages:msgs})
+ });
+ const d=await r.json();
+ const ans=d.choices?.[0]?.message?.content||"Error";
+
+ t.his.pop();
+ t.his.push({role:"assistant",content:ans});
+ t.title=t.title==="New chat"?text.slice(0,20):t.title;
+ t.mem+=`\n${text.slice(0,20)}→${ans.slice(0,20)}`;
+ t.mem=t.mem.split("\n").slice(-30).join("\n");
+ save(); render();
+}
+
+/* init */
+if(!threads.length)newThread(); else render();
+</script>
+</body>
+</html>

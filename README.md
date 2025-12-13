@@ -2,116 +2,105 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>kansaii GPT</title>
+
 <style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 0;
-  background: #e5ddd5;
-}
-header {
-  background: #075e54;
-  color: #fff;
-  padding: 12px;
-  text-align: center;
-  font-weight: bold;
-}
-#chat {
-  padding: 10px;
-  height: calc(100vh - 160px);
-  overflow-y: auto;
-}
-.bubble {
-  max-width: 80%;
-  padding: 10px;
-  margin: 6px 0;
-  border-radius: 10px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
-.user {
-  background: #dcf8c6;
-  margin-left: auto;
-}
-.ai {
-  background: #fff;
-  margin-right: auto;
-}
-#controls {
-  padding: 8px;
-  background: #f0f0f0;
-}
-textarea, select, button {
-  width: 100%;
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-button {
-  padding: 10px;
-  font-weight: bold;
-}
+* { -webkit-text-size-adjust: 100%; }
+body { margin:0; background:#e5ddd5; font-family:-apple-system,BlinkMacSystemFont,sans-serif; }
+header { background:#075e54; color:#fff; padding:12px; text-align:center; font-weight:bold; }
+#chat { padding:10px; height:calc(100svh - 170px); overflow-y:auto; }
+
+.message { display:flex; margin:6px 0; align-items:flex-end; }
+.message.user { flex-direction:row-reverse; }
+
+.icon { font-size:26px; margin:0 6px; }
+.bubble { max-width:75%; padding:10px; border-radius:12px; white-space:pre-wrap; }
+
+.user .bubble { background:#dcf8c6; }
+.ai .bubble { background:#fff; }
+
+#controls { padding:8px; background:#f0f0f0; }
+select, textarea, button { width:100%; font-size:16px; margin-bottom:6px; }
+button { padding:10px; font-weight:bold; }
+button:disabled { opacity:.5; }
 </style>
 </head>
 
 <body>
 <header>🗣 kansaii GPT</header>
-
 <div id="chat"></div>
 
 <div id="controls">
-  <select id="persona">
-    <option value="gyaru">💅 関西ギャル</option>
-    <option value="man">😎 関西兄ちゃん</option>
-  </select>
+<select id="persona">
+  <option value="gyaru">💅 関西ギャル</option>
+  <option value="man">😎 関西兄ちゃん</option>
+</select>
 
-  <textarea id="q" rows="2" placeholder="メッセージ入力"></textarea>
-  <button onclick="send()">送信</button>
-  <button onclick="clearAll()">履歴リセット</button>
+<textarea id="q" rows="2" placeholder="Enterで送信 / Shift+Enterで改行"></textarea>
+<button id="sendBtn" onclick="send()">送信</button>
+<button onclick="resetPersona()">このキャラをリセット</button>
 </div>
 
 <script>
+/* ===== Enter送信 ===== */
+q.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }
+});
+
 /* ===== APIキー ===== */
-function getKey() {
-  let k = localStorage.getItem("OPENAI_KEY");
-  if (!k) {
-    k = prompt("初回だけAPIキー入れてな（sk-...）");
-    if (k) localStorage.setItem("OPENAI_KEY", k);
-  }
+function getKey(){
+  let k=localStorage.getItem("OPENAI_KEY");
+  if(!k){ k=prompt("初回だけAPIキー入れてな"); if(k) localStorage.setItem("OPENAI_KEY",k); }
   return k;
 }
 
-/* ===== 保存 ===== */
-let history = JSON.parse(localStorage.getItem("CHAT_HISTORY") || "[]");
-let memory = localStorage.getItem("KANSAl_MEMORY") || "";
+/* ===== キャラ定義 ===== */
+const PERSONA = {
+  gyaru: { icon:"💅", name:"ギャルGPT",
+    prompt:`関西弁ギャル。ノリ良しテンポ良し。ツッコミ多め。距離感近い。`
+  },
+  man: { icon:"😎", name:"兄ちゃんGPT",
+    prompt:`落ち着いた関西弁の兄ちゃん。冷静で分かりやすい。`
+  }
+};
 
-/* ===== 表示 ===== */
-const chat = document.getElementById("chat");
+/* ===== キャラ別保存 ===== */
+function key(name){ return PERSONA_SEL+"_"+name; }
+let PERSONA_SEL = localStorage.getItem("CURRENT_PERSONA") || "gyaru";
 
-function addBubble(text, cls) {
-  const div = document.createElement("div");
-  div.className = "bubble " + cls;
-  div.textContent = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+persona.value = PERSONA_SEL;
+
+let history = JSON.parse(localStorage.getItem(key("HISTORY")) || "[]");
+let memory  = localStorage.getItem(key("MEMORY")) || "";
+
+/* ===== UI ===== */
+const chat=document.getElementById("chat");
+const sendBtn=document.getElementById("sendBtn");
+
+function addMsg(text,who){
+  const d=document.createElement("div");
+  d.className="message "+who;
+  d.innerHTML=`<div class="icon">${who==="user"?"🧑":PERSONA[PERSONA_SEL].icon}</div>
+               <div class="bubble">${text}</div>`;
+  chat.appendChild(d); chat.scrollTop=chat.scrollHeight;
+  return d.querySelector(".bubble");
 }
 
-/* ===== 人格 ===== */
-function personaPrompt(type) {
-  return type === "man"
-    ? "あなたは落ち着いた関西弁の兄ちゃんAI。的確で分かりやすい。"
-    : "あなたはノリ良し関西ギャルAI。テンポ良くツッコむ。";
-}
+/* ===== キャラ切替 ===== */
+persona.onchange=()=>{
+  localStorage.setItem("CURRENT_PERSONA",persona.value);
+  location.reload();
+};
 
-/* ===== 複合思考 ===== */
-function systemPrompt() {
+/* ===== システム ===== */
+function systemPrompt(){
   return `
-あなたは統合司令塔AI「kansaii GPT」。
+あなたは統合AI「kansaii GPT」。
+【GPT】論理【Gemini】整理【Grok】本質
 
-【GPT視点】論理と正確性
-【Gemini視点】整理と分かりやすさ
-【Grok視点】本質ツッコミ
-
-${personaPrompt(document.getElementById("persona").value)}
+キャラ設定:
+${PERSONA[PERSONA_SEL].prompt}
 
 【記憶】
 ${memory}
@@ -119,64 +108,50 @@ ${memory}
 }
 
 /* ===== 送信 ===== */
-async function send() {
-  const key = getKey();
-  if (!key) return;
+async function send(){
+  const keyApi=getKey(); if(!keyApi) return;
+  const qText=q.value.trim(); if(!qText) return;
+  q.value="";
 
-  const q = document.getElementById("q").value;
-  document.getElementById("q").value = "";
+  history.push({role:"user",content:qText});
+  addMsg(qText,"user");
 
-  history.push({ role: "user", content: q });
-  addBubble(q, "user");
+  sendBtn.disabled=true; sendBtn.textContent="送信中…";
+  const thinking=addMsg("考え中……🧠","ai");
 
-  // 考え中表示
-  const thinking = document.createElement("div");
-  thinking.className = "bubble ai";
-  thinking.textContent = "考え中……🧠";
-  chat.appendChild(thinking);
-  chat.scrollTop = chat.scrollHeight;
-
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + key
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt() },
-        ...history
-      ]
+  const res=await fetch("https://api.openai.com/v1/chat/completions",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json","Authorization":"Bearer "+keyApi },
+    body:JSON.stringify({
+      model:"gpt-4o-mini",
+      messages:[{role:"system",content:systemPrompt()},...history]
     })
   });
 
-  const data = await res.json();
-  const ans = data.choices?.[0]?.message?.content || "エラーやで";
+  const data=await res.json();
+  const ans=data.choices?.[0]?.message?.content || "エラーやで";
 
-  chat.removeChild(thinking);
-  addBubble(ans, "ai");
+  thinking.textContent=ans;
+  history.push({role:"assistant",content:ans});
+  localStorage.setItem(key("HISTORY"),JSON.stringify(history));
 
-  history.push({ role: "assistant", content: ans });
-  localStorage.setItem("CHAT_HISTORY", JSON.stringify(history));
-
-  learn(q, ans);
+  learn(qText,ans);
+  sendBtn.disabled=false; sendBtn.textContent="送信";
 }
 
-/* ===== 疑似学習 ===== */
-function learn(u, a) {
-  memory += `\n・${u.slice(0,30)} → ${a.slice(0,30)}`;
-  memory = memory.split("\n").slice(-20).join("\n");
-  localStorage.setItem("KANSAl_MEMORY", memory);
+/* ===== 学習 ===== */
+function learn(u,a){
+  memory+=`\n・${u.slice(0,30)} → ${a.slice(0,30)}`;
+  memory=memory.split("\n").slice(-20).join("\n");
+  localStorage.setItem(key("MEMORY"),memory);
 }
 
 /* ===== リセット ===== */
-function clearAll() {
-  if (confirm("履歴全部消すで？")) {
-    localStorage.clear();
-    chat.innerHTML = "";
-    history = [];
-    memory = "";
+function resetPersona(){
+  if(confirm("このキャラの記憶消すで？")){
+    localStorage.removeItem(key("HISTORY"));
+    localStorage.removeItem(key("MEMORY"));
+    location.reload();
   }
 }
 </script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>KawaiiGPT - Direct Browser</title>
+<title>KawaiiGPT 即動作版</title>
 <style>
 :root{--bg:#f7f7f8;--side:#202123;--chat:#fff;--user:#dcf8c6;}
 .dark{--bg:#343541;--chat:#444654;--user:#2f7d4f;}
@@ -30,16 +30,17 @@ body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overf
 .msg.ai .bubble{background:var(--chat);border:1px solid #ddd;}
 .controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;}
 textarea{width:100%;font-size:16px;}
-img.gen{max-width:70%;border-radius:10px;}
 #spinner{display:none;width:24px;height:24px;border:4px solid #ccc;border-top-color:#007bff;border-radius:50%;animation:spin 1s linear infinite;margin-left:10px;}
 @keyframes spin{100%{transform:rotate(360deg);}}
 #progressContainer{width:100%;height:18px;background:#eee;border-radius:9px;overflow:hidden;margin-top:6px;}
 #progressBar{width:0%;height:100%;background:#007bff;color:#fff;text-align:center;line-height:18px;font-size:12px;}
+img.gen{max-width:70%;border-radius:10px;}
 .menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px;}
 .menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px;}
 </style>
 </head>
 <body>
+
 <div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
 
 <div class="side" id="side">
@@ -60,8 +61,10 @@ img.gen{max-width:70%;border-radius:10px;}
   </div>
   <div class="chat" id="chat"></div>
   <div class="controls">
+   <input type="file" id="img" accept="image/*"><br>
    <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
    <button onclick="send()">送信</button>
+   <button onclick="gen()">🎨 画像生成</button>
    <div id="progressContainer"><div id="progressBar">0%</div></div>
   </div>
  </div>
@@ -82,13 +85,14 @@ const side=document.getElementById("side");
 const ov=document.getElementById("ov");
 const threadsDiv=document.getElementById("threads");
 const menu=document.getElementById("menu");
+const imgInput=document.getElementById("img");
 
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
 let cur=localStorage.getItem("CUR");
 let menuId=null;
 
-// ここに自分の OpenAI APIキーをセット（ブラウザ公開は注意）
-const API_KEY="sk-XXXXXXXXXXXXXXXXXXXX";
+// ★Worker URL をコピペ済み
+const API="https://lingering-tree-bd40.pke777100.workers.dev";
 
 function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open"); side.classList.toggle("open",o); ov.classList.toggle("show",o);}
 function dark(){document.body.classList.toggle("dark"); localStorage.setItem("DARK",document.body.classList.contains("dark"));}
@@ -115,7 +119,8 @@ function render(f=""){
  chat.innerHTML="";
  const t=threads.find(x=>x.id===cur); if(!t) return;
  t.his.forEach(m=>{
-  chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;
+  if(m.type==="img"){ chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`; }
+  else chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;
  });
  chat.scrollTop=1e9;
 }
@@ -138,15 +143,7 @@ async function send(){
  const interval=startFakeProgress();
 
  try{
-  const messages=[
-    {role:"system", content:persona(t.p)},
-    {role:"user", content:text}
-  ];
-  const r=await fetch("https://api.openai.com/v1/chat/completions",{
-   method:"POST",
-   headers:{"Content-Type":"application/json","Authorization":"Bearer "+API_KEY},
-   body:JSON.stringify({model:"gpt-4o-mini",messages})
-  });
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"chat",payload:{model:"gpt-4o-mini",messages:[{role:"system",content:persona(t.p)},{role:"user",content:text}]}})});
   const d=await r.json();
   t.his.pop();
   const ans=d.choices?.[0]?.message?.content||"エラー";
@@ -159,6 +156,27 @@ async function send(){
   spinner.style.display="none"; clearInterval(interval);
   if(t.title==="New chat") t.title=t.his[t.his.length-1].content.replace(/\n/g," ").slice(0,18);
   save(); render();
+ }
+}
+
+async function gen(){
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ const promptText = prompt("生成したい内容"); if(!promptText) return;
+
+ spinner.style.display="inline-block"; updateProgress(0);
+ const interval=startFakeProgress();
+
+ try{
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"image",payload:{prompt:promptText,n:1,size:"1024x1024"}})});
+  const d=await r.json();
+  const url=d.data?.[0]?.url;
+  if(url) t.his.push({type:"img",url});
+  updateProgress(100);
+ }catch(err){
+  alert("画像生成エラー: "+err.message);
+  updateProgress(100);
+ }finally{
+  spinner.style.display="none"; clearInterval(interval); save(); render();
  }
 }
 

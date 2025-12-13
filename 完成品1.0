@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>kansaii GPT – JOKER 🎭</title>
+
+<style>
+:root{
+ --bg:#f7f7f8; --side:#202123; --chat:#ffffff;
+ --text:#111; --user:#dcf8c6;
+}
+.dark{
+ --bg:#343541; --side:#202123; --chat:#444654;
+ --text:#eee; --user:#2f7d4f;
+}
+body{margin:0;background:var(--bg);font-family:-apple-system;height:100svh;overflow:hidden}
+.app{display:flex;height:100%}
+
+/* sidebar */
+.side{width:260px;background:var(--side);color:#fff;display:flex;flex-direction:column;transition:.25s}
+.side h1{font-size:14px;padding:12px;margin:0;border-bottom:1px solid #333}
+.side button{margin:8px;background:#2a2b32;color:#fff;border:0;padding:8px;border-radius:6px}
+.list{flex:1;overflow:auto}
+.itemWrap{position:relative;overflow:hidden}
+.item{padding:10px 12px;border-bottom:1px solid #2a2b32;background:#202123;
+ display:flex;justify-content:space-between;transition:.25s}
+.item.active{background:#2a2b32}
+.del{position:absolute;right:-80px;top:0;height:100%;width:80px;
+ background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center}
+
+/* main */
+.main{flex:1;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:10px;padding:10px;background:var(--chat)}
+.menu{font-size:22px}
+.chat{flex:1;overflow:auto;padding:12px}
+.msg{display:flex;margin:8px 0;gap:6px}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap}
+.msg.user .bubble{background:var(--user)}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
+.icon{font-size:20px}
+.controls{padding:10px;background:var(--chat)}
+textarea{width:100%;font-size:16px}
+
+/* long press menu */
+.menuPop{
+ position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+ background:#000;color:#fff;padding:10px;border-radius:10px;
+ display:none;z-index:30
+}
+.menuPop button{margin:4px;background:#333;color:#fff;border:0;padding:6px 10px}
+</style>
+</head>
+
+<body>
+<div class="menuPop" id="lpMenu">
+  <div>この質問を…</div>
+  <button onclick="askAgain('joker')">🃏 ジョーカーに</button>
+  <button onclick="askAgain('harley')">💋 ハーレクインに</button>
+</div>
+
+<div class="app">
+  <div class="side">
+    <h1>🎭 LAST BOSS</h1>
+    <button onclick="newThread()">＋ New</button>
+    <div class="list" id="threads"></div>
+  </div>
+
+  <div class="main">
+    <div class="top"><b>kansaii GPT</b></div>
+    <div class="chat" id="chat"></div>
+    <div class="controls">
+      <textarea id="q" rows="2" placeholder="Enter送信"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+/* data */
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
+let current=localStorage.getItem("CUR");
+let holdText="";
+
+/* key */
+function key(){
+ let k=localStorage.getItem("KEY");
+ if(!k){k=prompt("APIキー");localStorage.setItem("KEY",k);}
+ return k;
+}
+
+/* thread */
+function newThread(){
+ const p=prompt("人格 joker / harley","joker")||"joker";
+ const id="t"+Date.now();
+ threads.unshift({id,title:"New chat",his:[],persona:p,pin:false});
+ current=id;save();render();
+}
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",current);}
+
+function render(){
+ const list=threadsDiv=document.getElementById("threads");
+ list.innerHTML="";
+ threads.forEach(t=>{
+  const w=document.createElement("div");
+  w.className="itemWrap";
+  const i=document.createElement("div");
+  i.className="item"+(t.id===current?" active":"");
+  i.innerHTML=`<span>${t.title}</span>`;
+  i.onclick=()=>{current=t.id;save();render();}
+  let startX=0;
+  i.ontouchstart=e=>startX=e.touches[0].clientX;
+  i.ontouchmove=e=>{
+   let dx=e.touches[0].clientX-startX;
+   if(dx<-30)i.style.transform="translateX(-80px)";
+  }
+  const d=document.createElement("div");
+  d.className="del";
+  d.innerText="🗑";
+  d.onclick=()=>{
+   if(t.pin){t.pin=false;return;}
+   threads=threads.filter(x=>x.id!==t.id);
+   current=threads[0]?.id||null;
+   save();render();
+  }
+  w.append(i,d);list.append(w);
+ });
+
+ chat.innerHTML="";
+ const t=threads.find(x=>x.id===current);
+ if(!t)return;
+ t.his.forEach(m=>{
+  const icon=m.role==="user"?"🧑":(t.persona==="joker"?"🃏":"💋");
+  const d=document.createElement("div");
+  d.className="msg "+m.role;
+  d.innerHTML=`<div class="icon">${icon}</div><div class="bubble">${m.content}</div>`;
+  if(m.role==="user"){
+   d.onmousedown=d.ontouchstart=()=>{
+    holdText=m.content;
+    setTimeout(()=>lpMenu.style.display="block",400);
+   }
+  }
+  chat.append(d);
+ });
+}
+
+/* send */
+q.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();send(q.value)}}
+
+async function send(text,personaOverride){
+ const t=threads.find(x=>x.id===current);
+ const persona=personaOverride||t.persona;
+ t.his.push({role:"user",content:text});
+ render();
+
+ const r=await fetch("https://api.openai.com/v1/chat/completions",{
+  method:"POST",
+  headers:{
+   "Content-Type":"application/json",
+   "Authorization":"Bearer "+key()
+  },
+  body:JSON.stringify({
+   model:"gpt-4o-mini",
+   messages:[
+    {role:"system",content:`完全フィクション。${persona}人格。関西弁ブラックジョーク。`},
+    ...t.his
+   ]
+  })
+ });
+ const d=await r.json();
+ t.his.push({role:"assistant",content:d.choices[0].message.content});
+ t.title=t.title==="New chat"?text.slice(0,20):t.title;
+ save();render();
+}
+
+function askAgain(p){
+ lpMenu.style.display="none";
+ send(holdText,p);
+}
+
+if(!threads.length)newThread();render();
+</script>
+</body>
+</html>

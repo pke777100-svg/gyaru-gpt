@@ -4,90 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>kansaii GPT</title>
-
 <style>
-:root{
- --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6
-}
-.dark{
- --bg:#343541; --chat:#444654; --user:#2f7d4f
-}
-body{
- margin:0;font-family:-apple-system;
- background:var(--bg);height:100svh;overflow:hidden
-}
+:root{--bg:#f7f7f8;--side:#202123;--chat:#fff;--user:#dcf8c6}
+.dark{--bg:#343541;--chat:#444654;--user:#2f7d4f}
+body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overflow:hidden}
 .app{display:flex;height:100%}
-
-/* sidebar */
-.side{
- position:fixed;top:0;left:0;height:100%;width:260px;
- background:var(--side);color:#fff;z-index:20;
- transform:translateX(-100%);transition:.25s;
- display:flex;flex-direction:column
-}
+.side{position:fixed;top:0;left:0;height:100%;width:260px;background:var(--side);color:#fff;z-index:20;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column}
 .side.open{transform:translateX(0)}
 .side h1{font-size:14px;margin:10px}
-.side input,.side button{
- margin:6px;border-radius:6px;border:0;padding:8px
-}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px}
 .list{flex:1;overflow:auto}
-.item{
- padding:10px;border-bottom:1px solid #2a2b32;
- display:flex;align-items:center;gap:6px;cursor:pointer
-}
+.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer}
 .item.active{background:#2a2b32}
 .item span.title{flex:1}
-.more{
- padding:4px 8px;font-size:20px;color:#aaa
-}
-
-/* overlay */
-.overlay{
- position:fixed;inset:0;background:rgba(0,0,0,.4);
- display:none;z-index:10
-}
+.more{padding:4px 8px;font-size:20px;color:#aaa}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
 .overlay.show{display:block}
-
-/* main */
 .main{flex:1;display:flex;flex-direction:column}
-.top{
- padding:10px;background:var(--chat);
- border-bottom:1px solid #ddd;
- display:flex;gap:10px
-}
+.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px}
 .chat{flex:1;overflow:auto;padding:12px}
 .msg{display:flex;margin:8px 0}
 .msg.user{justify-content:flex-end}
-.bubble{
- max-width:70%;padding:10px;border-radius:10px;
- white-space:pre-wrap
-}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap}
 .msg.user .bubble{background:var(--user)}
 .msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
-.controls{
- padding:10px;background:var(--chat);
- border-top:1px solid #ddd
-}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd}
 textarea{width:100%;font-size:16px}
 img.gen{max-width:70%;border-radius:10px}
 
-/* menu */
-.menuBox{
- position:fixed;bottom:0;left:0;right:0;
- background:#fff;border-radius:12px 12px 0 0;
- display:none;z-index:30;padding:10px
-}
-.menuBox button{
- width:100%;padding:12px;margin:6px 0;font-size:16px
-}
+/* progress */
+#spinner{display:none;width:24px;height:24px;margin-left:10px;vertical-align:middle;animation:spin 1s linear infinite;border:4px solid #ccc;border-top-color:#007bff;border-radius:50%;}
+@keyframes spin{100%{transform:rotate(360deg);}}
+#progressContainer{margin-top:8px;width:100%;background:#eee;border-radius:5px;overflow:hidden;height:20px;}
+#progressBar{height:100%;width:0%;background:#007bff;color:#fff;text-align:center;line-height:20px;}
+.menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px}
+.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px}
 </style>
 </head>
-
 <body>
-
 <div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
 
-<!-- sidebar -->
 <div class="side" id="side">
  <h1>kansaii GPT</h1>
  <input placeholder="検索" oninput="render(this.value)">
@@ -99,22 +55,20 @@ img.gen{max-width:70%;border-radius:10px}
  <button onclick="dark()">🌙 Dark</button>
 </div>
 
-<!-- main -->
 <div class="app">
  <div class="main">
-  <div class="top">
-   <span onclick="toggleSide()">☰</span><b>Chat</b>
-  </div>
+  <div class="top"><span onclick="toggleSide()">☰</span><b>Chat</b></div>
   <div class="chat" id="chat"></div>
   <div class="controls">
    <input type="file" id="img" accept="image/*"><br><br>
    <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
-   <button onclick="gen()">🎨 画像生成</button>
+   <button onclick="send()">送信</button>
+   <div id="progressContainer"><div id="progressBar">0%</div></div>
+   <span id="spinner">🧠</span>
   </div>
  </div>
 </div>
 
-<!-- thread menu -->
 <div class="menuBox" id="menu">
  <button onclick="renameThread()">✏️ 名前変更</button>
  <button onclick="deleteThread()">🗑 削除</button>
@@ -122,104 +76,27 @@ img.gen{max-width:70%;border-radius:10px}
 </div>
 
 <script>
-const API="https://kansaii-gpt-api.yourname.workers.dev"; // ★自分のWorkerに変更
-const side=document.getElementById("side");
-const ov=document.getElementById("ov");
-const threadsDiv=document.getElementById("threads");
-const chat=document.getElementById("chat");
-const q=document.getElementById("q");
-const menu=document.getElementById("menu");
+const API="https://kansaii-gpt-api.yourname.workers.dev";
+const side=document.getElementById("side"), ov=document.getElementById("ov"), threadsDiv=document.getElementById("threads"), chat=document.getElementById("chat"), q=document.getElementById("q"), menu=document.getElementById("menu");
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]"), cur=localStorage.getItem("CUR"), menuId=null;
 
-let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
-let cur=localStorage.getItem("CUR");
-let menuId=null;
-
-/* ui */
-function toggleSide(v){
- const o=v!==undefined?v:!side.classList.contains("open");
- side.classList.toggle("open",o);
- ov.classList.toggle("show",o);
-}
-function dark(){
- document.body.classList.toggle("dark");
- localStorage.setItem("DARK",document.body.classList.contains("dark"));
-}
+function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open"); side.classList.toggle("open",o); ov.classList.toggle("show",o);}
+function dark(){document.body.classList.toggle("dark");localStorage.setItem("DARK",document.body.classList.contains("dark"));}
 if(localStorage.getItem("DARK")==="true")document.body.classList.add("dark");
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur);}
+function newThread(p){const id="t"+Date.now();threads.unshift({id,title:"New chat",p,his:[]});cur=id;save();render();toggleSide(false);}
+function openMenu(e,id){e.stopPropagation();menuId=id;menu.style.display="block";ov.classList.add("show");}
+function closeMenu(){menu.style.display="none";menuId=null;ov.classList.remove("show");}
+function renameThread(){const t=threads.find(x=>x.id===menuId); if(!t)return; const n=prompt("スレッド名",t.title); if(n){t.title=n;save();render();} closeMenu();}
+function deleteThread(){threads=threads.filter(x=>x.id!==menuId); if(cur===menuId)cur=threads[0]?.id||null; save();render();closeMenu();}
+function render(f=""){threadsDiv.innerHTML="";threads.filter(t=>t.title.includes(f)).forEach(t=>{const d=document.createElement("div");d.className="item"+(t.id===cur?" active":"");d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`; d.onclick=()=>{cur=t.id;save();render();toggleSide(false)}; d.querySelector(".more").onclick=e=>openMenu(e,t.id);threadsDiv.appendChild(d);}); chat.innerHTML=""; const t=threads.find(x=>x.id===cur); if(!t)return; t.his.forEach(m=>{if(m.type==="img"){chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;}else{chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;}}); chat.scrollTop=1e9;}
+function persona(p){if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。";if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。";return"無機質で事実のみ簡潔。";}
 
-/* data */
-function save(){
- localStorage.setItem("THREADS",JSON.stringify(threads));
- localStorage.setItem("CUR",cur);
-}
+// 進捗更新
+function updateProgress(value){const bar=document.getElementById("progressBar"); bar.style.width=value+"%"; bar.textContent=value+"%";}
 
-/* threads */
-function newThread(p){
- const id="t"+Date.now();
- threads.unshift({id,title:"New chat",p,his:[]});
- cur=id;save();render();toggleSide(false);
-}
-function openMenu(e,id){
- e.stopPropagation();
- menuId=id;
- menu.style.display="block";
- ov.classList.add("show");
-}
-function closeMenu(){
- menu.style.display="none";
- menuId=null;
- ov.classList.remove("show");
-}
-function renameThread(){
- const t=threads.find(x=>x.id===menuId);
- if(!t)return;
- const n=prompt("スレッド名",t.title);
- if(n){t.title=n;save();render();}
- closeMenu();
-}
-function deleteThread(){
- threads=threads.filter(x=>x.id!==menuId);
- if(cur===menuId)cur=threads[0]?.id||null;
- save();render();closeMenu();
-}
-
-/* render */
-function render(f=""){
- threadsDiv.innerHTML="";
- threads.filter(t=>t.title.includes(f)).forEach(t=>{
-  const d=document.createElement("div");
-  d.className="item"+(t.id===cur?" active":"");
-  d.innerHTML=`
-   <span class="title">${t.title}</span>
-   <span class="more">⋯</span>
-  `;
-  d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
-  d.querySelector(".more").onclick=e=>openMenu(e,t.id);
-  threadsDiv.appendChild(d);
- });
- chat.innerHTML="";
- const t=threads.find(x=>x.id===cur); if(!t)return;
- t.his.forEach(m=>{
-  if(m.type==="img"){
-   chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;
-  }else{
-   chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;
-  }
- });
- chat.scrollTop=1e9;
-}
-
-/* persona */
-function persona(p){
- if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。";
- if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。";
- return"無機質で事実のみ簡潔。";
-}
-
-/* chat */
-q.onkeydown=e=>{
- if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}
-};
-
+// 送信
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
 async function send(){
  const t=threads.find(x=>x.id===cur); if(!t)return;
  const text=q.value.trim(); if(!text)return;
@@ -228,63 +105,45 @@ async function send(){
  t.his.push({role:"assistant",content:"考え中……🧠"});
  render();
 
+ const spinner=document.getElementById("spinner");
+ spinner.style.display="inline-block";
+ updateProgress(0);
+
  const img=document.getElementById("img").files[0];
  let content=[{type:"text",text}];
  if(img){
-  const b=await new Promise(r=>{
-   const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img)
-  });
+  const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img);});
   content.push({type:"image_url",image_url:{url:b}});
  }
 
+ // API呼び出し
  const r=await fetch(API,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-   model:"gpt-4o-mini",
-   messages:[
-    {role:"system",content:persona(t.p)},
-    {role:"user",content}
-   ]
-  })
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:persona(t.p)},{role:"user",content}]})
  });
+ updateProgress(70);
  const d=await r.json();
  t.his.pop();
  const ans=d.choices?.[0]?.message?.content||"エラー";
  t.his.push({role:"assistant",content:ans});
+ updateProgress(100);
+ spinner.style.display="none";
+
+ // ダウンロードリンク
+ const blob=new Blob([ans],{type:"text/plain"});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement("a");
+ link.href=url;
+ link.download="KawaiiGPT_result.txt";
+ link.textContent="生成完了！クリックしてダウンロード";
+ chat.appendChild(link);
+
  if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
- save();render();
+ save(); render();
 }
 
-/* image gen */
-async function gen(){
- const p=prompt("生成したい内容"); if(!p)return;
- const r=await fetch(API+"/image",{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({prompt:p})
- });
- const d=await r.json();
- const url=d.data?.[0]?.url;
- const t=threads.find(x=>x.id===cur);
- t.his.push({type:"img",url});
- save();render();
-}
-
-/* share */
-function share(){
- const t=threads.find(x=>x.id===cur); if(!t)return;
- location.hash=btoa(encodeURIComponent(JSON.stringify(t)));
- alert("URLコピーして共有してな");
-}
-if(location.hash.length>1){
- try{
-  const t=JSON.parse(decodeURIComponent(atob(location.hash.slice(1))));
-  threads=[t]; cur=t.id; save();
- }catch(e){}
-}
-
-/* init */
+// 初期化
 if(!threads.length)newThread("joker"); else render();
 </script>
 </body>

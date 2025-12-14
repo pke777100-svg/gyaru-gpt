@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT v1.5</title>
+<title>Charisma GPT 総合版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;background:#000;color:#e5e7eb;}
-html,body{height:100%;overflow:hidden;}
-#app{height:100%;display:flex;flex-direction:column;}
-#topbar{height:56px;padding:0 12px;display:flex;align-items:center;gap:10px;background:#111;border-bottom:1px solid #444;position:relative;z-index:10;}
+body,html{height:100%;}
+#app{display:flex;flex-direction:column;height:100%;position:relative;}
+#topbar{height:56px;display:flex;align-items:center;padding:0 12px;gap:10px;background:#111;border-bottom:1px solid #444;}
 .personaBtn{padding:6px 10px;border-radius:12px;cursor:pointer;background:#222;color:#fff;}
 .personaBtn.active{background:#555;}
 #chat{flex:1;padding:12px;overflow-y:auto;}
@@ -17,10 +17,9 @@ html,body{height:100%;overflow:hidden;}
 .ai{background:#1f2937;border-bottom-left-radius:6px;}
 #thinking{display:none;margin:10px;padding:10px 14px;border-radius:16px;font-size:12px;background:radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);animation: drift 2s linear infinite;}
 @keyframes drift{from{background-position:0 0}to{background-position:-200px 0}}
-footer{padding:12px;background:#111;border-top:1px solid #444;display:flex;gap:8px;align-items:center;position:relative;z-index:10;}
+footer{padding:12px;background:#111;border-top:1px solid #444;display:flex;gap:8px;align-items:center;position:sticky;bottom:0;}
 input{flex:1;padding:14px;border-radius:18px;border:none;outline:none;font-size:16px;}
 button#sendBtn{padding:10px 14px;border-radius:18px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
-#debug{color:red;font-size:12px;padding:4px 8px;overflow:auto;height:60px;}
 </style>
 </head>
 <body>
@@ -34,7 +33,6 @@ button#sendBtn{padding:10px 14px;border-radius:18px;border:none;background:#2563
   </div>
   <div id="chat"></div>
   <div id="thinking">🧠 Thinking...</div>
-  <div id="debug"></div>
   <footer>
     <input id="input" placeholder="Message..." />
     <button id="sendBtn">➤</button>
@@ -47,25 +45,29 @@ let persona="joker";
 const chat=document.getElementById("chat");
 const input=document.getElementById("input");
 const thinking=document.getElementById("thinking");
-const debug=document.getElementById("debug");
-const personaButtons=document.querySelectorAll(".personaBtn");
+document.querySelectorAll(".personaBtn").forEach(b=>{
+  b.onclick=()=>{
+    persona=b.dataset.persona;
+    document.querySelectorAll(".personaBtn").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+  }
+});
 
 function addBubble(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
-personaButtons.forEach(b=>{b.onclick=()=>{persona=b.dataset.persona;personaButtons.forEach(btn=>btn.classList.remove("active"));b.classList.add("active");}});
-
 async function sendMessage(){
-  const text=input.value.trim();if(!text)return;input.value="";input.disabled=true;addBubble(text,"user");thinking.style.display="block";
+  const text=input.value.trim();if(!text)return;input.value="";input.disabled=true;addBubble(text,"user");
+  thinking.style.display="block";
   try{
-    const res=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:text},{role:"system",content:"persona:"+persona}]})});
+    const res=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:text}],persona})});
     const data=await res.json();
-    addBubble(data.reply,"ai");debug.textContent=JSON.stringify(data.debug,null,2);
+    addBubble(data.reply,"ai");
+    console.log("Debug:",data.debug);
   }catch(e){
-    addBubble("…夢が途切れた。手は残っている。(Error)","ai");debug.textContent=e.message;
+    addBubble("…夢が途切れた。手は残っている。(Worker Error)","ai");
+    console.error("Worker Error:",e);
   }
   thinking.style.display="none";input.disabled=false;
-  chat.scrollTop=chat.scrollHeight;
 }
-
 document.getElementById("sendBtn").onclick=sendMessage;
 input.addEventListener("keydown",e=>{if(e.key==="Enter")sendMessage();});
 </script>

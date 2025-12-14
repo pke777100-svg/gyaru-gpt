@@ -3,222 +3,139 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT</title>
-<link rel="apple-touch-icon" href="icon.png">
-
+<title>Charisma GPT - Council Mode</title>
 <style>
-:root{
-  --bg:#0a0a0f;
-  --panel:#020617;
-  --ai:#1f2937;
-  --user:#2563eb;
-  --accent:#7c3aed;
-}
-
 *{box-sizing:border-box}
-html,body{
-  margin:0;height:100%;
-  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
-  background:var(--bg);color:#e5e7eb;
-  overflow:hidden;
-}
+html,body{margin:0;height:100%;font-family:-apple-system;background:#000;color:#e5e7eb}
 
-/* ===== ランダム歪み ===== */
-body.warp{
-  animation:warp .6s ease-in-out;
-}
-@keyframes warp{
-  0%{filter:none;transform:none}
-  40%{
-    filter:hue-rotate(var(--h)) blur(2px);
-    transform:skew(var(--x),var(--y)) scale(1.02);
-  }
-  100%{filter:none;transform:none}
-}
+/* ===== 全体 ===== */
+#app{height:100%;display:flex;flex-direction:column;position:relative}
 
-/* ===== HEADER ===== */
-header{
-  height:50px;
+/* ===== 宛先バー ===== */
+#topbar{
+  height:56px;
   display:flex;
-  justify-content:center;
   align-items:center;
+  gap:10px;
+  padding:0 12px;
   background:#020617;
   border-bottom:1px solid #1e293b;
-  font-weight:700;
 }
+#back{font-size:20px;cursor:pointer}
+#to{flex:1;cursor:pointer}
+#to span{font-weight:600}
+#to small{font-size:11px;opacity:.6}
 
-/* ===== PERSONA ===== */
-#persona{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  padding:8px;
-}
-.btn{
-  padding:6px 14px;
-  border-radius:20px;
-  background:#020617;
-  border:1px solid #334155;
-  color:#c7d2fe;
-  font-size:12px;
-}
-
-/* ===== CHAT ===== */
-#chat{
+/* ===== スレッド / SMS風 ===== */
+#councilChat{
   flex:1;
-  padding:14px;
-  overflow-y:auto;
-}
-.bubble{
-  max-width:78%;
-  margin-bottom:12px;
-  padding:12px 14px;
-  border-radius:18px;
-  animation:fade .2s ease;
-}
-@keyframes fade{
-  from{opacity:0;transform:translateY(6px)}
-  to{opacity:1;transform:none}
-}
-.user{margin-left:auto;background:var(--user);color:#fff}
-.ai{background:var(--ai)}
-
-/* ===== THINKING ===== */
-#thinking{
-  display:none;
-  margin:10px;
-  padding:16px;
-  border-radius:18px;
-  background:rgba(30,30,50,.8);
-  position:relative;
-  overflow:hidden;
-  font-size:13px;
-}
-.ripple{
-  position:absolute;
-  top:50%;left:50%;
-  width:6px;height:6px;
-  background:rgba(167,139,250,.5);
-  border-radius:50%;
-  transform:translate(-50%,-50%);
-  animation:ripple 1.4s infinite;
-}
-@keyframes ripple{
-  0%{width:6px;height:6px;opacity:1}
-  100%{width:280px;height:280px;opacity:0}
-}
-.flow{
-  position:relative;
-  white-space:nowrap;
-  animation:flow 2s linear infinite;
-}
-@keyframes flow{
-  0%{transform:translateX(100%) rotate(1deg)}
-  50%{transform:translateX(0%) rotate(-1deg)}
-  100%{transform:translateX(-120%) rotate(1deg)}
-}
-
-/* ===== INPUT ===== */
-footer{
   padding:12px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.msg{
+  display:flex;
+  flex-direction:column;
+  padding:10px 14px;
+  border-radius:12px;
+  max-width:80%;
+}
+.joker{background:#dc2626;color:#fff;align-self:flex-start}
+.harley{background:#f59e0b;color:#000;align-self:flex-end}
+.neutral{background:#374151;color:#fff;align-self:center;font-style:italic}
+.sender{font-size:12px;font-weight:600;margin-bottom:4px;opacity:.8}
+.text{font-size:14px}
+
+/* ===== 入力フォーム ===== */
+#inputBar{
+  display:flex;
+  gap:8px;
+  padding:8px 12px;
   background:#020617;
   border-top:1px solid #1e293b;
 }
-input{
-  width:100%;
-  padding:14px;
-  border-radius:14px;
+#userInput{
+  flex:1;
+  padding:10px;
+  border-radius:12px;
   border:none;
   outline:none;
-  font-size:16px;
+  background:#1e293b;
+  color:#fff;
 }
+#sendBtn{
+  padding:10px 16px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
+/* ===== スクロール最下部 ===== */
+#councilChat::-webkit-scrollbar{width:6px}
+#councilChat::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
 </style>
 </head>
-
 <body>
+<div id="app">
+  <div id="topbar">
+    <div id="back">←</div>
+    <div id="to"><span>Council Mode</span><br><small>三人寄れば文殊の会議</small></div>
+  </div>
 
-<header>🃏 Charisma GPT</header>
+  <div id="councilChat"></div>
 
-<div id="persona">
-  <button class="btn" onclick="setPersona('joker')">🃏 ジョーカー</button>
-  <button class="btn" onclick="setPersona('harley')">💋 ハーレクイン</button>
+  <div id="inputBar">
+    <input type="text" id="userInput" placeholder="質問を入力…" />
+    <button id="sendBtn">送信</button>
+  </div>
 </div>
-
-<div id="chat"></div>
-
-<div id="thinking">
-  <div class="ripple"></div>
-  <div class="flow">🧠 思考中……悪知恵を量子展開中……</div>
-</div>
-
-<footer>
-  <input id="input" placeholder="メッセージを入力…" />
-</footer>
 
 <script>
-const WORKER_URL="https://YOUR-WORKER-URL";
-const chat=document.getElementById("chat");
-const input=document.getElementById("input");
-const thinking=document.getElementById("thinking");
+const chat = document.getElementById('councilChat');
+const input = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
 
-let messages=[{
-  role:"system",
-  content:"完全フィクション。関西弁。悪のカリスマ。ヒントで導く。"
-}];
+// キャラクター別テンプレート
+const characters = [
+  {name: '🃏 Joker', class: 'joker', style:'皮肉・戦略・冷笑'},
+  {name: '💋 Harley', class: 'harley', style:'感情・煽り・直感'},
+  {name: '🤖 Neutral AI', class: 'neutral', style:'冷静・現実・ブレーキ役'}
+];
 
-function randomWarp(){
-  const h=Math.floor(Math.random()*120-60)+"deg";
-  const x=Math.floor(Math.random()*6-3)+"deg";
-  const y=Math.floor(Math.random()*6-3)+"deg";
-  document.documentElement.style.setProperty("--h",h);
-  document.documentElement.style.setProperty("--x",x);
-  document.documentElement.style.setProperty("--y",y);
-  document.body.classList.add("warp");
-  setTimeout(()=>document.body.classList.remove("warp"),600);
-}
-
-function setPersona(p){
-  randomWarp();
-  messages[0].content =
-    p==="joker"
-    ? "完全フィクション。関西弁。悪のジョーカー。皮肉とブラックユーモア。"
-    : "完全フィクション。関西弁。ハーレクイン。女口調で煽る。";
-}
-
-function add(text,cls){
-  const d=document.createElement("div");
-  d.className="bubble "+cls;
-  d.textContent=text;
-  chat.appendChild(d);
-  chat.scrollTop=chat.scrollHeight;
-}
-
-async function send(){
-  const t=input.value.trim();
-  if(!t)return;
-  input.value="";
-  add(t,"user");
-  messages.push({role:"user",content:t});
-  thinking.style.display="block";
-
-  const r=await fetch(WORKER_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({messages})
+// 送信ボタンクリック処理
+sendBtn.onclick = () => {
+  const question = input.value.trim();
+  if(!question) return;
+  addMessage('あなた', question, 'neutral');
+  input.value = '';
+  
+  // 3人順番に返答（妄想／フィクション）
+  characters.forEach((c, i) => {
+    setTimeout(() => {
+      const response = `${c.style}で一言: 「${question}について考えてみると…」`;
+      addMessage(c.name, response, c.class);
+    }, 400*(i+1));
   });
-  const j=await r.json();
-  const reply=j.choices[0].message.content;
-
-  thinking.style.display="none";
-  messages.push({role:"assistant",content:reply});
-  add(reply,"ai");
 }
 
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter")send();
+// メッセージ追加関数
+function addMessage(sender, text, cls){
+  const msg = document.createElement('div');
+  msg.className = `msg ${cls}`;
+  msg.innerHTML = `<div class="sender">${sender}</div><div class="text">${text}</div>`;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Enterキーでも送信
+input.addEventListener('keydown', e => {
+  if(e.key==='Enter') sendBtn.click();
 });
 </script>
-
 </body>
 </html>
-

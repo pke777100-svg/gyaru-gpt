@@ -79,7 +79,7 @@ function applyPersona(){
 
 function checkThirdBtn(){if(score>=10) thirdBtn.style.display="inline-block"}
 
-const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Random phrase ${i+1}`);
+const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Dream whisper ${i+1}`);
 function showRandomPhrase(){
   const phrase=randomPhrases[Math.floor(Math.random()*randomPhrases.length)];
   add(phrase,"ai");

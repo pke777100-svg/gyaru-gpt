@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Charisma GPT</title>
+<title>Charisma GPT SMS</title>
 <style>
 :root{
   --joker-bg:#0b0214;--harley-bg:#14020a;--third-bg:#1a1a0b;
@@ -15,13 +15,14 @@ body{margin:0;font-family:-apple-system;background:var(--joker-bg);color:#e5e7eb
 #jokerBtn{background:var(--joker-accent)}
 #harleyBtn{background:var(--harley-accent)}
 #thirdBtn{background:var(--third-accent);display:none}
-#chat{padding:12px;height:calc(100vh - 220px);overflow:auto}
-.bubble{max-width:78%;padding:12px 14px;border-radius:18px;margin-bottom:10px;word-break:break-word}
+#chat{padding:12px;height:calc(100vh - 220px);overflow:auto;display:flex;flex-direction:column}
+.bubble{max-width:78%;padding:12px 14px;border-radius:18px;margin-bottom:10px;word-break:break-word;position:relative}
 .user{margin-left:auto;background:#2563eb}
 .ai{background:#1f2937}
-#thinking{padding:6px 12px;margin:6px;border-radius:14px;font-size:12px;background:#222;overflow:hidden;height:24px}
-footer{display:flex;padding:10px;border-top:1px solid #1e293b;position:sticky;bottom:0;background:#000;z-index:10}
-input{flex:1;padding:12px;border-radius:16px;border:none;font-size:16px}
+.typing{font-style:italic;font-size:12px;color:#999;margin-left:8px;animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0}}
+#footer{display:flex;padding:10px;border-top:1px solid #1e293b;position:sticky;bottom:0;background:#000;z-index:10}
+#input{flex:1;padding:12px;border-radius:16px;border:none;font-size:16px}
 button.send{width:42px;margin-left:6px;border:none;border-radius:50%;font-size:18px;cursor:pointer}
 #psychTest{display:none;padding:10px}
 canvas{width:100%;height:150px}
@@ -36,19 +37,26 @@ canvas{width:100%;height:150px}
 </div>
 
 <div id="chat"></div>
-<div id="thinking">🤖</div>
+<div id="thinking"><span class="typing">AI is typing...</span></div>
 <div id="psychTest"><canvas id="psychCanvas"></canvas></div>
 
-<footer>
+<div id="footer">
   <input id="input" placeholder="Message…" />
   <button class="send" onclick="send()">↑</button>
-</footer>
+</div>
 
 <script>
 const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
 let persona=localStorage.getItem("persona")||"joker";
 let memory=JSON.parse(localStorage.getItem("charismaMemory")||"[]");
 let score=Number(localStorage.getItem("charismaScore")||0);
+
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const thinking=document.getElementById("thinking");
+const jokerBtn=document.getElementById("jokerBtn");
+const harleyBtn=document.getElementById("harleyBtn");
+const thirdBtn=document.getElementById("thirdBtn");
 
 applyPersona();
 checkThirdBtn();
@@ -77,14 +85,17 @@ function showRandomPhrase(){
   add(phrase,"ai");
 }
 
-function add(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
+function add(text,cls){
+  const d=document.createElement("div");
+  d.className="bubble "+cls;
+  d.textContent=text;
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
+}
 
 function thinkingEffect(){
-  const thinking=document.getElementById("thinking");
   thinking.style.display="block";
-  let chars="⊗⊕▢▣◇◆■□◼";
-  let interval=setInterval(()=>{thinking.textContent=chars[Math.floor(Math.random()*chars.length)]},50);
-  return interval;
+  return setInterval(()=>{},50);
 }
 
 async function send(){
@@ -107,7 +118,7 @@ async function send(){
     });
     const data=await res.json();
     clearInterval(interval);
-    document.getElementById("thinking").style.display="none";
+    thinking.style.display="none";
     add(data.reply,"ai");
     memory.push({role:"assistant",content:data.reply});
     score++;
@@ -116,7 +127,7 @@ async function send(){
     if(score>=20) showPsychTest();
   }catch{
     clearInterval(interval);
-    document.getElementById("thinking").style.display="none";
+    thinking.style.display="none";
     add("…通信エラー。再試行せよ。","ai");
   }
 }

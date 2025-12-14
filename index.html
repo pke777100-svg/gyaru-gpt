@@ -7,14 +7,12 @@
 <style>
 :root{
  --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --input:#fff;
- --highlight:#2196f3
+ --highlight:#2196f3;
 }
-.dark{
+body.dark{
  --bg:#1c1c1e; --side:#2c2c2e; --chat:#3a3a3c; --user:#2f7d4f; --input:#444;
 }
-body{
- margin:0;font-family:-apple-system; background:var(--bg); height:100svh; overflow:hidden;
-}
+body{margin:0;font-family:-apple-system;background:var(--bg);height:100vh;overflow:hidden;}
 .app{display:flex;height:100%;}
 .side{
  position:fixed;top:0;left:0;height:100%;width:260px;
@@ -34,8 +32,9 @@ body{
 .top{
  padding:10px;background:var(--chat); border-bottom:1px solid #ddd;
  display:flex; justify-content:space-between; align-items:center;
+ position:fixed;top:0;left:0;right:0; z-index:15;
 }
-.chat{flex:1;overflow:auto;padding:12px;}
+.chat{flex:1;overflow:auto;padding:12px;margin-top:50px;}
 .msg{display:flex;margin:6px 0;}
 .msg.user{justify-content:flex-end;}
 .bubble{
@@ -44,12 +43,11 @@ body{
 .msg.user .bubble{background:var(--user);}
 .msg.ai .bubble{background:var(--chat);border:1px solid #ddd;}
 .controls{
- padding:10px;background:var(--chat); border-top:1px solid #ddd; display:flex; align-items:center; gap:6px;
+ padding:10px;background:var(--chat); border-top:1px solid #ddd; display:flex; align-items:center; gap:6px; position:fixed;bottom:0; left:0; right:0;
 }
 textarea{flex:1; font-size:16px; border-radius:6px; padding:6px; background:var(--input);}
 button{padding:6px 10px;border-radius:6px;border:0;background:#2196f3;color:#fff;}
-input[type=file]{padding:4px;}
-#typing{color:var(--highlight); animation:blink 1s step-start infinite;}
+#typing{color:var(--highlight); animation:blink 1s step-start infinite; display:none;}
 @keyframes blink{50%{opacity:0;}}
 .menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px;}
 .menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px;}
@@ -81,7 +79,7 @@ input[type=file]{padding:4px;}
    <button onclick="send()">送信</button>
    <button onclick="gen()">🎨</button>
   </div>
-  <div id="typing" style="display:none">入力中…</div>
+  <div id="typing">入力中…</div>
  </div>
 </div>
 
@@ -92,41 +90,27 @@ input[type=file]{padding:4px;}
 </div>
 
 <script>
-const API="https://empty-night-6ba3.pke777100.workers.dev"; // Worker URL
-const side=document.getElementById("side");
-const ov=document.getElementById("ov");
-const threadsDiv=document.getElementById("threads");
-const chat=document.getElementById("chat");
-const q=document.getElementById("q");
-const menu=document.getElementById("menu");
-const typing=document.getElementById("typing");
+const API="https://empty-night-6ba3.pke777100.workers.dev";
+const side=document.getElementById("side"), ov=document.getElementById("ov"), threadsDiv=document.getElementById("threads");
+const chat=document.getElementById("chat"), q=document.getElementById("q"), menu=document.getElementById("menu"), typing=document.getElementById("typing");
 
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
 let cur=localStorage.getItem("CUR");
 let menuId=null;
 let isLineUI=false;
 
-/* UI toggle */
 function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open");side.classList.toggle("open",o);ov.classList.toggle("show",o);}
-function toggleUI(){isLineUI=!isLineUI;render();}
+function toggleUI(){isLineUI=!isLineUI; render();}
 function dark(){document.body.classList.toggle("dark");localStorage.setItem("DARK",document.body.classList.contains("dark"));}
 if(localStorage.getItem("DARK")==="true")document.body.classList.add("dark");
 
-/* data */
 function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur);}
-
-/* threads */
-function newThread(p){
- const id="t"+Date.now();
- threads.unshift({id,title:"New chat",p,his:[],tox:50,mad:50});
- cur=id; save(); render(); toggleSide(false);
-}
+function newThread(p){const id="t"+Date.now(); threads.unshift({id,title:"New chat",p,his:[],tox:50,mad:50}); cur=id; save(); render(); toggleSide(false);}
 function openMenu(e,id){e.stopPropagation(); menuId=id; menu.style.display="block"; ov.classList.add("show");}
 function closeMenu(){menu.style.display="none"; menuId=null; ov.classList.remove("show");}
 function renameThread(){const t=threads.find(x=>x.id===menuId); if(!t)return; const n=prompt("スレッド名",t.title); if(n){t.title=n; save(); render();} closeMenu();}
 function deleteThread(){threads=threads.filter(x=>x.id!==menuId); if(cur===menuId)cur=threads[0]?.id||null; save();render();closeMenu();}
 
-/* render */
 function render(f=""){
  threadsDiv.innerHTML="";
  threads.filter(t=>t.title.includes(f)).forEach(t=>{
@@ -146,28 +130,16 @@ function render(f=""){
  document.getElementById("titleTop").textContent = t?.title || "waru GPT";
 }
 
-/* persona prompt */
-function personaPrompt(t){
- return t.p==="joker"?"🃏 ジョーカー": t.p==="harley"?"💋 ハーレクイン":"🤖 無機質AI";
-}
-
-/* chat */
-q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()};};
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault(); send();}};
 
 async function send(){
  const t=threads.find(x=>x.id===cur); if(!t)return;
- const text=q.value.trim(); if(!text)return;
- q.value="";
+ const text=q.value.trim(); if(!text)return; q.value="";
  t.his.push({role:"user",content:text});
  render();
- typing.style.display="block";
-
+ typing.style.display="inline";
  try{
-  const res=await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({messages:[{role:"user",content:text}], persona:t.p})
-  });
+  const res=await fetch(API,{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({messages:[{role:"user",content:text}], persona:t.p})});
   const data=await res.json();
   typing.style.display="none";
   const ans=data.choices?.[0]?.message?.content||"エラー";
@@ -175,19 +147,12 @@ async function send(){
   if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
   save(); render();
  }catch(e){
-  typing.style.display="none";
-  t.his.push({role:"ai",content:"エラー: "+e.message});
-  render();
+  typing.style.display="none"; t.his.push({role:"ai",content:"エラー: "+e.message}); render();
  }
 }
 
-/* image gen */
-async function gen(){
- const p=prompt("生成したい内容"); if(!p) return;
- alert("画像生成はこのスレッドではサンプルです。");
-}
+async function gen(){const p=prompt("生成したい内容"); if(!p) return; alert("画像生成サンプル");}
 
-/* init */
 if(!threads.length) newThread("joker"); else render();
 </script>
 </body>

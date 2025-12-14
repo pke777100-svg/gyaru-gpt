@@ -6,199 +6,159 @@
 <title>waru GPT</title>
 <style>
 :root{
- --bg:#f0f0f0; --side:#222; --chat:#fff; --user:#dcf8c6; --text:#000;
+  --bg:#f7f7f8; --user:#dcf8c6; --ai:#fff; --side:#202123;
 }
-.dark{
- --bg:#1e1e1e; --side:#333; --chat:#2a2a2a; --user:#3e5f3c; --text:#fff;
-}
-body{margin:0;font-family:-apple-system;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;}
-header{padding:8px;background:var(--side);color:#fff;text-align:center;font-weight:bold;}
-#chat{flex:1;overflow:auto;padding:8px;}
-.bubble{max-width:70%;padding:10px;border-radius:16px;margin:4px;word-wrap:break-word;position:relative;}
-.user{background:var(--user);margin-left:auto;}
-.ai{background:var(--chat);border:1px solid #ddd;margin-right:auto;}
-.controls{display:flex;flex-direction:column;padding:8px;background:var(--chat);}
-textarea{width:100%;font-size:16px;margin-bottom:4px;color:var(--text);}
-button{padding:6px;margin:2px;}
-.menu{display:flex;gap:4px;margin-bottom:4px;}
-.menu button{flex:1;}
-.progress{height:4px;background:#4caf50;width:0%;transition:width .1s;}
-.copy-btn, .quote-btn{position:absolute;top:4px;font-size:10px;padding:2px 4px;margin:2px;cursor:pointer;}
-.copy-btn{right:32px;} .quote-btn{right:4px;}
-#threads{display:flex;overflow-x:auto;padding:4px;background:var(--side);}
-.thread{padding:4px 8px;background:#444;color:#fff;border-radius:12px;margin:2px;cursor:pointer;white-space:nowrap;}
-.thread.active{background:#666;}
+body{margin:0;font-family:-apple-system;background:var(--bg);height:100vh;overflow:hidden;}
+.app{display:flex;height:100%;}
+.side{position:fixed;top:0;left:0;height:100%;width:260px;background:var(--side);color:#fff;z-index:20;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column;}
+.side.open{transform:translateX(0);}
+.side h1{font-size:14px;margin:10px;}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px;}
+.list{flex:1;overflow:auto;}
+.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.item.active{background:#2a2b32;}
+.item span.title{flex:1;}
+.more{padding:4px 8px;font-size:20px;color:#aaa;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10;}
+.overlay.show{display:block;}
+.main{flex:1;display:flex;flex-direction:column;}
+.top{padding:10px;background:var(--ai);border-bottom:1px solid #ddd;display:flex;gap:10px;}
+.chat{flex:1;overflow:auto;padding:12px;}
+.msg{display:flex;margin:8px 0;align-items:flex-end;}
+.msg.user{justify-content:flex-end;}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap;position:relative;}
+.msg.user .bubble{background:var(--user);}
+.msg.ai .bubble{background:var(--ai);border:1px solid #ddd;}
+.controls{padding:10px;background:var(--ai);border-top:1px solid #ddd;display:flex;flex-direction:column;gap:6px;}
+textarea{width:100%;font-size:16px;}
+img.gen{max-width:70%;border-radius:10px;display:block;margin-top:6px;}
+.menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px;}
+.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px;}
+button.copyBtn{position:absolute;top:4px;right:4px;font-size:12px;padding:2px 4px;cursor:pointer;}
 </style>
 </head>
 <body>
 
-<header>waru GPT</header>
+<div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
 
-<div id="threads"></div>
-
-<div class="menu">
-  <button onclick="setPersona('joker')">🃏ジョーカー</button>
-  <button onclick="setPersona('harley')">💋ハーレクイン</button>
-  <button onclick="setPersona('ai')">🤖無機質AI</button>
-  <button onclick="toggleDark()">🌙切替</button>
-  <button onclick="newThread()">➕新規</button>
+<div class="side" id="side">
+  <h1>waru GPT</h1>
+  <input placeholder="検索" oninput="render(this.value)">
+  <button onclick="newThread('joker')">🃏 ジョーカー</button>
+  <button onclick="newThread('harley')">💋 ハーレクイン</button>
+  <button onclick="newThread('ai')">🤖 無機質AI</button>
+  <div class="list" id="threads"></div>
+  <button onclick="dark()">🌙 ダーク切替</button>
 </div>
 
-<div id="chat"></div>
-<div class="progress" id="prog"></div>
+<div class="app">
+  <div class="main">
+    <div class="top"><span onclick="toggleSide()">☰</span><b>waru GPT</b></div>
+    <div class="chat" id="chat"></div>
+    <div class="controls">
+      <input type="file" id="img" accept="image/*">
+      <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+      <button onclick="send()">送信</button>
+      <button onclick="gen()">🎨 画像生成</button>
+    </div>
+  </div>
+</div>
 
-<div class="controls">
-  <textarea id="q" rows="2" placeholder="Enterで送信 / Shift+Enter改行"></textarea>
-  <input type="file" id="img" accept="image/*">
-  <button onclick="send()">送信</button>
-  <button onclick="gen()">画像生成</button>
+<div class="menuBox" id="menu">
+  <button onclick="renameThread()">✏️ 名前変更</button>
+  <button onclick="deleteThread()">🗑 削除</button>
+  <button onclick="closeMenu()">❌ キャンセル</button>
 </div>
 
 <script>
-const API="https://empty-night-6ba3.pke777100.workers.dev";
-const chat=document.getElementById("chat");
-const q=document.getElementById("q");
-const prog=document.getElementById("prog");
-const imgInput=document.getElementById("img");
-const threadsDiv=document.getElementById("threads");
-
+const API="https://empty-night-6ba3.pke777100.workers.dev"; // 前のWorker URL固定
+const side=document.getElementById("side"), ov=document.getElementById("ov");
+const threadsDiv=document.getElementById("threads"), chat=document.getElementById("chat");
+const q=document.getElementById("q"), menu=document.getElementById("menu");
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
-let cur=localStorage.getItem("CUR")||null;
-let personaType="joker";
-let confirmSend=true; //長押しで確認ON/OFF
+let cur=localStorage.getItem("CUR"), menuId=null;
 
-// UI
-function toggleDark(){ document.body.classList.toggle("dark"); }
+/* UI & dark */
+function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open");side.classList.toggle("open",o);ov.classList.toggle("show",o);}
+function dark(){document.body.classList.toggle("dark");localStorage.setItem("DARK",document.body.classList.contains("dark"));}
+if(localStorage.getItem("DARK")==="true")document.body.classList.add("dark");
 
-function setPersona(p){
-  personaType=p;
-  getCurThread().persona=p;
-  addMsg("ai","ペルソナ変更: "+p);
-  save();
-}
+/* data */
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur);}
 
-// THREAD
-function newThread(){
+/* threads */
+function newThread(p){
   const id="t"+Date.now();
-  threads.unshift({id,title:"New chat",persona:personaType,his:[]});
-  cur=id;
-  save(); renderThreads(); renderChat();
+  threads.unshift({id,title:"New chat",p,his:[]});
+  cur=id;save();render();toggleSide(false);
 }
-function getCurThread(){ return threads.find(t=>t.id===cur); }
+function openMenu(e,id){e.stopPropagation();menuId=id;menu.style.display="block";ov.classList.add("show");}
+function closeMenu(){menu.style.display="none";menuId=null;ov.classList.remove("show");}
+function renameThread(){const t=threads.find(x=>x.id===menuId);if(!t)return;const n=prompt("スレッド名",t.title);if(n){t.title=n;save();render();}closeMenu();}
+function deleteThread(){threads=threads.filter(x=>x.id!==menuId);if(cur===menuId)cur=threads[0]?.id||null;save();render();closeMenu();}
 
-function renderThreads(){
+/* render */
+function render(f=""){
   threadsDiv.innerHTML="";
-  threads.forEach(t=>{
-    const div=document.createElement("div");
-    div.className="thread"+(t.id===cur?" active":"");
-    div.textContent=t.title;
-    div.onclick=()=>{cur=t.id; renderThreads(); renderChat();};
-    // 長押しで確認ON/OFF
-    let pressTimer;
-    div.onmousedown=()=>{ pressTimer=setTimeout(()=>{ confirmSend=!confirmSend; alert("確認"+(confirmSend?"ON":"OFF")); },800); }
-    div.onmouseup=()=>clearTimeout(pressTimer);
-    threadsDiv.appendChild(div);
+  threads.filter(t=>t.title.includes(f)).forEach(t=>{
+    const d=document.createElement("div");
+    d.className="item"+(t.id===cur?" active":"");
+    d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
+    d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
+    d.querySelector(".more").onclick=e=>openMenu(e,t.id);
+    threadsDiv.appendChild(d);
   });
-}
-
-function renderChat(){
   chat.innerHTML="";
-  const t=getCurThread(); if(!t) return;
+  const t=threads.find(x=>x.id===cur); if(!t) return;
   t.his.forEach(m=>{
-    if(m.type==="img"){
-      addMsg("ai","画像: "+m.url);
-    }else{
-      addMsg(m.role,m.content);
-    }
+    const div=document.createElement("div");
+    div.className="msg "+(m.role||"ai");
+    const b=document.createElement("div");
+    b.className="bubble";b.textContent=m.content||"";
+    if(m.type==="img"){const img=document.createElement("img");img.className="gen";img.src=m.url;b.appendChild(img);}
+    const copyBtn=document.createElement("button");copyBtn.className="copyBtn";copyBtn.textContent="📋";copyBtn.onclick=()=>navigator.clipboard.writeText(m.content||"");b.appendChild(copyBtn);
+    div.appendChild(b);chat.appendChild(div);
   });
+  chat.scrollTop=1e9;
 }
 
-// Chat
-q.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }});
+/* persona */
+function persona(p){if(p==="joker")return"関西弁のラスボスジョーカー。皮肉とブラックジョーク。";if(p==="harley")return"関西弁のハーレクイン。狂気と挑発。";return"無機質で事実のみ簡潔。";}
 
+/* send */
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
 async function send(){
-  const text=q.value.trim(); if(!text) return;
-  if(confirmSend && !window.confirm("送信してもいいですか？")) return;
-  q.value="";
-  const t=getCurThread();
-  t.his.push({role:"user",content:text});
-  const aiDiv=addMsg("ai","考え中…🧠");
-  renderChat();
+  const t=threads.find(x=>x.id===cur); if(!t)return;
+  const text=q.value.trim();if(!text)return;q.value="";
+  const aiDiv=document.createElement("div");aiDiv.className="msg ai";const b=document.createElement("div");b.className="bubble";b.textContent="入力中…";aiDiv.appendChild(b);chat.appendChild(aiDiv);chat.scrollTop=1e9;
+  t.his.push({role:"user",content:text});t.his.push({role:"assistant",content:"入力中…"});save();render();
 
-  let progress=0;
-  const interval=setInterval(()=>{ progress+=5; if(progress>95) progress=95; prog.style.width=progress+"%"; },100);
-
+  const img=document.getElementById("img").files[0];
+  let content=[{type:"text",text}];
+  if(img){const b=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(img);});content.push({type:"image_url",image_url:{url:b}});}
   try{
-    const content=[{role:"user", content:text}];
-    if(imgInput.files[0]){
-      const b=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(imgInput.files[0]); });
-      content.push({role:"user", content:b});
-    }
-
-    const res=await fetch(API,{
-      method:"POST",
-      headers:{"Content-Type":"application/json; charset=utf-8"},
-      body:JSON.stringify({messages:content, persona:t.persona})
-    });
-
+    const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:[{role:"system",content:persona(t.p)},{role:"user",content}],persona:t.p})});
     const data=await res.json();
-    clearInterval(interval);
-    prog.style.width="100%";
-    const ans=data.choices?.[0]?.message?.content || "エラー";
-    t.his.push({role:"assistant",content:ans});
-    updateMsg(aiDiv,ans);
-
-    // 自動題名
-    if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
-    save(); renderThreads();
-    setTimeout(()=>{prog.style.width="0%";},500);
-
-  }catch(e){
-    clearInterval(interval);
-    updateMsg(aiDiv,"エラー: "+e.message);
-    prog.style.width="0%";
-  }
+    const ans=data.choices?.[0]?.message?.content||"エラー";
+    t.his.pop();t.his.push({role:"assistant",content:ans});save();render();
+  }catch(e){t.his.pop();t.his.push({role:"assistant",content:"エラー: "+e.message});save();render();}
 }
 
-// add/update msg
-function addMsg(role,content){
-  const div=document.createElement("div");
-  div.className=role==="user"?"bubble user":"bubble ai";
-  div.textContent=content;
-
-  const copyBtn=document.createElement("span");
-  copyBtn.className="copy-btn"; copyBtn.textContent="📋"; copyBtn.onclick=()=>navigator.clipboard.writeText(content);
-  div.appendChild(copyBtn);
-
-  const quoteBtn=document.createElement("span");
-  quoteBtn.className="quote-btn"; quoteBtn.textContent="❝"; quoteBtn.onclick=()=>{ q.value=content; q.focus(); };
-  div.appendChild(quoteBtn);
-
-  chat.appendChild(div);
-  chat.scrollTop=chat.scrollHeight;
-  return div;
-}
-function updateMsg(div,content){ div.textContent=content; chat.scrollTop=chat.scrollHeight; }
-
-// 画像生成
+/* image */
 async function gen(){
-  const p=prompt("生成したい内容"); if(!p) return;
-  const res=await fetch(API+"/image",{method:"POST", headers:{"Content-Type":"application/json; charset=utf-8"}, body:JSON.stringify({prompt:p})});
-  const d=await res.json();
-  const url=d.data?.[0]?.url;
-  if(url) getCurThread().his.push({type:"img",url:url});
-  renderChat();
+  const t=threads.find(x=>x.id===cur);if(!t)return;
+  const p=prompt("生成したい内容");if(!p)return;
+  const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})});
+  const d=await r.json();
+  const url=d.data?.[0]?.url;t.his.push({type:"img",url});save();render();
 }
 
-// save/load
-function save(){
-  localStorage.setItem("THREADS",JSON.stringify(threads));
-  localStorage.setItem("CUR",cur);
-}
+/* share */
+function share(){const t=threads.find(x=>x.id===cur);if(!t)return;location.hash=btoa(encodeURIComponent(JSON.stringify(t)));alert("URLコピーして共有してな");}
+if(location.hash.length>1){try{const t=JSON.parse(decodeURIComponent(atob(location.hash.slice(1))));threads=[t];cur=t.id;save();}catch(e){}}
 
-// init
-if(!threads.length){ newThread(); }else{ renderThreads(); renderChat(); }
-
+/* init */
+if(!threads.length)newThread("joker");else render();
 </script>
 </body>
 </html>

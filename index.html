@@ -158,12 +158,12 @@ async function send(){
       div.append(a,b); chat.appendChild(div); shake(10); input.focus(); return;
     }
 
-    const controller=new AbortController(); setTimeout(()=>controller.abort(),20000);
+    const controller=new AbortController(); setTimeout(()=>controller.abort(),30000);
     const res=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json; charset=utf-8"},body:JSON.stringify({messages:t.messages,persona:t.persona}),signal:controller.signal});
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content||data.reply||"Worker did not respond…";
     t.messages.push({role:"assistant",content:reply}); chat.removeChild(thinking); add(reply,"ai "+(t.persona==="harley"?"harley":t.persona==="mad"?"madsci":"joker")); save();
-  }catch(e){chat.removeChild(thinking); add("Worker error…","ai");}
+  }catch(e){chat.removeChild(thinking); add("Worker error: "+e.message,"ai");}
 
   renderThreads(); input.disabled=false; input.focus(); chat.scrollIntoView({behavior:"smooth"}); updatePersonaButtons();
 }

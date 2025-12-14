@@ -3,153 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT</title>
-
+<title>Charisma GPT v1.2 Safe</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;}
-html,body{height:100%;background:#000;color:#e5e7eb;overflow:hidden;}
-
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;background:#000;color:#e5e7eb;}
 #app{height:100%;display:flex;flex-direction:column;}
-#header{
-  height:52px;
-  padding:0 14px;
-  display:flex;
-  align-items:center;
-  background:#0b0b0b;
-  border-bottom:1px solid #222;
-  font-weight:600;
-}
-
-#chat{
-  flex:1;
-  overflow-y:auto;
-  padding:14px;
-  scroll-behavior:smooth;
-}
-
-.msg{
-  max-width:80%;
-  padding:12px 14px;
-  margin-bottom:10px;
-  border-radius:18px;
-  line-height:1.5;
-  animation:pop .25s ease-out;
-}
-.user{
-  margin-left:auto;
-  background:#2563eb;
-  color:#fff;
-  border-bottom-right-radius:6px;
-}
-.ai{
-  background:#1f2937;
-  border-bottom-left-radius:6px;
-}
-
-@keyframes pop{
-  from{transform:scale(.96);opacity:.3}
-  to{transform:scale(1);opacity:1}
-}
-
-/* 入力欄 */
-#inputBar{
-  padding:10px;
-  background:#0b0b0b;
-  border-top:1px solid #222;
-}
-#inputWrap{
-  display:flex;
-  gap:8px;
-}
-#input{
-  flex:1;
-  padding:14px;
-  border-radius:18px;
-  border:none;
-  outline:none;
-  font-size:16px;
-}
-#send{
-  padding:0 16px;
-  border-radius:18px;
-  border:none;
-  background:#2563eb;
-  color:#fff;
-  font-weight:600;
-}
-
-/* iPhone Safari キーボード対策 */
-:focus-within{
-  scroll-margin-bottom:120px;
-}
+#topbar{height:56px;padding:0 12px;display:flex;align-items:center;gap:10px;background:#111;border-bottom:1px solid #444;}
+#personaSelect{display:flex;gap:8px;}
+.personaBtn{padding:6px 10px;border-radius:12px;cursor:pointer;background:#222;color:#fff;}
+.personaBtn.active{background:#555;}
+#chat{flex:1;padding:12px;overflow-y:auto;}
+.bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;}
+.user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
+.ai{background:#1f2937;border-bottom-left-radius:6px;}
+#thinking{display:none;margin:10px;padding:10px 14px;border-radius:16px;font-size:12px;background:radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);animation: drift 2s linear infinite;}
+@keyframes drift{from{background-position:0 0}to{background-position:-200px 0}}
+footer{padding:12px;background:#111;border-top:1px solid #444;display:flex;gap:8px;align-items:center;position:fixed;bottom:0;width:100%;}
+input{flex:1;padding:14px;border-radius:18px;border:none;outline:none;font-size:16px;}
+button#sendBtn{padding:10px 14px;border-radius:18px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
+#threadMenu{position:fixed;top:56px;left:0;width:100%;background:#111;display:flex;flex-direction:column;z-index:10;display:none;}
+.threadItem{padding:10px;border-bottom:1px solid #444;cursor:pointer;}
+.threadItem.active{background:#333;}
+#newThreadBtn{padding:10px;background:#2563eb;color:#fff;cursor:pointer;text-align:center;}
 </style>
 </head>
-
 <body>
 <div id="app">
-  <div id="header">🤖 Charisma GPT</div>
-
-  <div id="chat"></div>
-
-  <div id="inputBar">
-    <div id="inputWrap">
-      <input id="input" placeholder="聞きたいことを書け" />
-      <button id="send">➤</button>
+  <div id="topbar">
+    <div id="personaSelect">
+      <div class="personaBtn active" data-persona="joker">🎭 Joker</div>
+      <div class="personaBtn" data-persona="harley">💋 Harley</div>
+      <div class="personaBtn" data-persona="ai">🤖 AI</div>
     </div>
+    <div id="threadToggle" style="margin-left:auto;cursor:pointer;">🗂️</div>
   </div>
+  <div id="chat"></div>
+  <div id="thinking">🧠 Thinking...</div>
+  <footer>
+    <input id="input" placeholder="Message..." />
+    <button id="sendBtn">➤</button>
+  </footer>
+</div>
+
+<div id="threadMenu">
+  <div id="newThreadBtn">＋ New Thread</div>
+  <div id="threadList"></div>
 </div>
 
 <script>
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
-const sendBtn = document.getElementById("send");
+const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
+let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
+let current=Object.keys(threads)[0]||null;
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const thinking=document.getElementById("thinking");
+const threadMenu=document.getElementById("threadMenu");
+const threadList=document.getElementById("threadList");
+const personaButtons=document.querySelectorAll(".personaBtn");
 
-/* === Charisma 安定コア === */
-function charismaReply(text){
-  const t = text.toLowerCase();
+function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
+function addBubble(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
+function renderChat(){
+  chat.innerHTML="";
+  if(!current) return;
+  const t=threads[current];
+  t.messages.forEach(m=>{
+    addBubble(m.content,m.role==="user"?"user":"ai");
+  });
+}
+function switchPersona(persona){
+  if(!current) return;
+  threads[current].persona=persona;save();
+  personaButtons.forEach(b=>b.classList.remove("active"));
+  document.querySelector(`.personaBtn[data-persona="${persona}"]`).classList.add("active");
+}
+function newThread(){
+  const id=Date.now().toString();
+  threads[id]={title:"New Chat",persona:"joker",messages:[]};
+  current=id;save();renderThreads();renderChat();
+}
+function renderThreads(){
+  threadList.innerHTML="";
+  Object.keys(threads).forEach(id=>{
+    const t=threads[id];
+    const d=document.createElement("div");
+    d.className="threadItem"+(id===current?" active":"");
+    d.textContent=t.title;
+    d.onclick=()=>{current=id;closeThreadMenu();renderChat();};
+    threadList.appendChild(d);
+  });
+}
+function closeThreadMenu(){threadMenu.style.display="none";}
+document.getElementById("threadToggle").onclick=()=>{threadMenu.style.display=threadMenu.style.display==="flex"?"none":"flex";}
+document.getElementById("newThreadBtn").onclick=newThread;
+personaButtons.forEach(b=>{b.onclick=()=>switchPersona(b.dataset.persona);});
+document.getElementById("sendBtn").onclick=sendMessage;
+input.addEventListener("keydown",e=>{if(e.key==="Enter") sendMessage();});
 
-  if(t.includes("何ができ")){
-    return "俺は答えを出すための存在じゃない。\n選択肢と視点を増やす。\n考えを鋭くし、判断を早くする。\n──それがCharisma。";
+async function sendMessage(){
+  const text=input.value.trim();if(!text)return;input.value="";input.disabled=true;addBubble(text,"user");
+  const t=threads[current];t.messages.push({role:"user",content:text});save();thinking.style.display="block";
+  try{
+    const res=await fetch(WORKER_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({messages:t.messages})
+    });
+    const data=await res.json();
+    const reply=data.reply||"…夢が途切れた。手は残っている。";
+    t.messages.push({role:"assistant",content:reply});addBubble(reply,"ai");save();renderThreads();
+  }catch(e){
+    const fallback="…夢が途切れた。手は残っている。";
+    t.messages.push({role:"assistant",content:fallback});addBubble(fallback,"ai");save();renderThreads();
   }
-  if(t.includes("はい") || t.includes("え")){
-    return "聞き返す前に考えろ。\nその一瞬に本音が出る。";
-  }
-  if(t.length < 4){
-    return "言葉が短い時ほど、意図は深い。\n続けろ。";
-  }
-
-  return "面白い問いや。\n答えは一つじゃない。\nどこまで踏み込む？";
+  thinking.style.display="none";input.disabled=false;
 }
 
-function addMsg(text,cls){
-  const d=document.createElement("div");
-  d.className="msg "+cls;
-  d.textContent=text;
-  chat.appendChild(d);
-  chat.scrollTop=chat.scrollHeight;
-}
-
-function send(){
-  const text=input.value.trim();
-  if(!text) return;
-  input.value="";
-  addMsg(text,"user");
-
-  setTimeout(()=>{
-    const reply = charismaReply(text);
-    addMsg(reply,"ai");
-  },300);
-}
-
-sendBtn.onclick=send;
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter") send();
-});
-
-/* 初期メッセージ */
-setTimeout(()=>{
-  addMsg("静かに始めよう。\n質問はもう頭にあるはずだ。","ai");
-},300);
+if(!current)newThread();else{renderThreads();renderChat();}
 </script>
 </body>
 </html>

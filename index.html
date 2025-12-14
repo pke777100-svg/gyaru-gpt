@@ -13,6 +13,8 @@ html,body{height:100%;}
 #to{flex:1;display:flex;flex-direction:column;cursor:pointer}
 #to span{font-weight:700}
 #to small{font-size:11px;opacity:.6}
+#personaButtons{display:flex;gap:6px;margin-top:4px}
+#personaButtons button{flex:1;padding:4px 8px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
 #threads{position:fixed;inset:0;background:#020617;z-index:20;display:none;flex-direction:column}
 #threads header{padding:14px;font-weight:700;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center}
 #threadList{overflow-y:auto;flex:1}
@@ -44,6 +46,11 @@ button.newThreadBtn:hover{background:#1e40af}
     <div id="to">
       <span id="personaLabel">🃏 Joker</span>
       <small>Charisma GPT</small>
+      <div id="personaButtons">
+        <button data-persona="joker" class="joker">Joker</button>
+        <button data-persona="harley" class="harley">Harley</button>
+        <button data-persona="mad" class="madsci">AI 🤖</button>
+      </div>
     </div>
   </div>
 
@@ -51,6 +58,7 @@ button.newThreadBtn:hover{background:#1e40af}
   <footer>
     <input id="input" placeholder="Message…" />
     <button class="sendBtn">↑</button>
+    <button class="newThreadBtn">+ New Chat</button>
   </footer>
 </div>
 
@@ -74,7 +82,8 @@ const input=document.getElementById("input");
 const sendBtn=document.querySelector(".sendBtn");
 const list=document.getElementById("threadList");
 const personaLabel=document.getElementById("personaLabel");
-const newThreadBtn=document.querySelector(".newThreadBtn");
+const personaButtons=document.querySelectorAll("#personaButtons button");
+const newThreadBtns=document.querySelectorAll(".newThreadBtn");
 
 function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
 function add(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
@@ -124,7 +133,7 @@ function renderChat(){
   chat.innerHTML="";
   if(!current) return;
   const t=threads[current];
-  personaLabel.textContent=t.persona==="harley"?"💋 Harley":t.persona==="mad"?"🧪 AI":"🃏 Joker";
+  personaLabel.textContent=t.persona==="harley"?"💋 Harley":t.persona==="mad"?"🤖 AI":"🃏 Joker";
   t.messages.forEach(m=>{
     if(m.role==="user") add(m.content,"user");
     if(m.role==="assistant"){
@@ -137,7 +146,18 @@ function renderChat(){
 document.getElementById("back").onclick=()=>{document.getElementById("threads").style.display="flex";}
 function closeThreads(){document.getElementById("threads").style.display="none";}
 
-newThreadBtn.onclick=()=>{const personas=["joker","harley","mad"];const persona=personas[Math.floor(Math.random()*3)];newThread(persona);};
+personaButtons.forEach(btn=>{
+  btn.onclick=()=>{
+    if(!current) return;
+    threads[current].persona=btn.dataset.persona;
+    shake(8);
+    save(); renderChat();
+  };
+});
+
+newThreadBtns.forEach(btn=>{
+  btn.onclick=()=>{const personas=["joker","harley","mad"];const persona=personas[Math.floor(Math.random()*3)];newThread(persona);};
+});
 
 async function send(){
   if(!current) return;

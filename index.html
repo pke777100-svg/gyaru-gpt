@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT Safe v1.1</title>
+<title>Charisma GPT Safe v1.2</title>
 <style>
 body{margin:0;font-family:-apple-system;background:#000;color:#e5e7eb;height:100vh;display:flex;flex-direction:column;}
-#chat{flex:1;overflow-y:auto;padding:12px;}
-.bubble{max-width:78%;padding:10px 14px;margin-bottom:8px;border-radius:18px;line-height:1.4;}
+#chat{flex:1;overflow-y:auto;padding:12px;margin-bottom:60px;}
+.bubble{max-width:78%;padding:10px 14px;margin-bottom:8px;border-radius:18px;line-height:1.4;opacity:0;animation:fadeIn 0.3s forwards;}
 .user{margin-left:auto;background:#2563eb;color:#fff;}
 .ai{background:#1f2937;border-left:2px solid #4f46e5;}
+@keyframes fadeIn{to{opacity:1;}}
 #thinking{display:none;font-size:12px;margin:10px;animation:blink 1s step-start infinite;}
 @keyframes blink{50%{opacity:0;}}
-footer{display:flex;padding:10px;background:#111;gap:8px;align-items:center;}
+footer{display:flex;padding:10px;background:#111;gap:8px;align-items:center;position:fixed;bottom:0;width:100%;box-sizing:border-box;}
 input{flex:1;padding:12px;border-radius:18px;border:none;outline:none;font-size:16px;}
 button{padding:10px 14px;border-radius:18px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
 </style>
@@ -66,8 +67,8 @@ async function sendMessage(){
     messages.push({role:"ai",content:reply});
     addBubble(reply,"ai");
   }catch(err){
-    console.error("Worker Error:",err);
-    const fallback="⚠️ Worker error: "+err.message;
+    // Worker エラー時は無駄な詳細は表示せずシンプルに
+    const fallback="…夢が途切れた。手は残っている。";
     messages.push({role:"ai",content:fallback});
     addBubble(fallback,"ai");
   }finally{

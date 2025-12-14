@@ -3,139 +3,258 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT - Council Mode</title>
+<title>Charisma GPT</title>
+
+<!-- iOS Safari ホーム画面アイコン -->
+<link rel="apple-touch-icon" href="icon.png">
+
 <style>
+/* ===== 基本 ===== */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:-apple-system;background:#000;color:#e5e7eb}
 
-/* ===== 全体 ===== */
-#app{height:100%;display:flex;flex-direction:column;position:relative}
+/* ===== レイアウト ===== */
+#app{height:100%;display:flex;flex-direction:column}
 
-/* ===== 宛先バー ===== */
+/* ===== 宛先バー（SMS風） ===== */
 #topbar{
   height:56px;
+  padding:0 12px;
   display:flex;
   align-items:center;
   gap:10px;
-  padding:0 12px;
   background:#020617;
   border-bottom:1px solid #1e293b;
 }
 #back{font-size:20px;cursor:pointer}
-#to{flex:1;cursor:pointer}
+#to{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  cursor:pointer;
+}
 #to span{font-weight:600}
 #to small{font-size:11px;opacity:.6}
 
-/* ===== スレッド / SMS風 ===== */
-#councilChat{
+/* ===== スレッド一覧 ===== */
+#threads{
+  position:fixed;
+  inset:0;
+  background:#020617;
+  z-index:10;
+  display:none;
+  flex-direction:column;
+}
+#threads header{
+  padding:14px;
+  font-weight:700;
+  border-bottom:1px solid #1e293b;
+}
+.thread{
+  padding:14px;
+  border-bottom:1px solid #1e293b;
+}
+.thread.active{background:#1e1b4b}
+
+/* ===== チャット ===== */
+#chat{
   flex:1;
   padding:12px;
   overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
 }
-.msg{
-  display:flex;
-  flex-direction:column;
-  padding:10px 14px;
-  border-radius:12px;
-  max-width:80%;
+.bubble{
+  max-width:78%;
+  padding:12px 14px;
+  margin-bottom:10px;
+  border-radius:18px;
+  line-height:1.5;
 }
-.joker{background:#dc2626;color:#fff;align-self:flex-start}
-.harley{background:#f59e0b;color:#000;align-self:flex-end}
-.neutral{background:#374151;color:#fff;align-self:center;font-style:italic}
-.sender{font-size:12px;font-weight:600;margin-bottom:4px;opacity:.8}
-.text{font-size:14px}
+.user{
+  margin-left:auto;
+  background:#2563eb;
+  color:#fff;
+  border-bottom-right-radius:6px;
+}
+.ai{
+  background:#1f2937;
+  border-bottom-left-radius:6px;
+}
 
-/* ===== 入力フォーム ===== */
-#inputBar{
-  display:flex;
-  gap:8px;
-  padding:8px 12px;
+/* ===== 思考中 ===== */
+#thinking{
+  display:none;
+  margin:10px;
+  padding:10px 14px;
+  border-radius:16px;
+  font-size:12px;
+  background:
+    radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);
+  animation: drift 2s linear infinite;
+}
+@keyframes drift{
+  from{background-position:0 0}
+  to{background-position:-200px 0}
+}
+
+/* ===== 入力欄 ===== */
+footer{
+  padding:12px;
   background:#020617;
   border-top:1px solid #1e293b;
 }
-#userInput{
-  flex:1;
-  padding:10px;
-  border-radius:12px;
+input{
+  width:100%;
+  padding:14px;
+  border-radius:18px;
   border:none;
   outline:none;
-  background:#1e293b;
-  color:#fff;
+  font-size:16px;
 }
-#sendBtn{
-  padding:10px 16px;
-  border:none;
-  border-radius:12px;
-  background:#2563eb;
-  color:#fff;
-  font-weight:600;
-  cursor:pointer;
-}
-
-/* ===== スクロール最下部 ===== */
-#councilChat::-webkit-scrollbar{width:6px}
-#councilChat::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+input:disabled{opacity:.4}
 </style>
 </head>
+
 <body>
 <div id="app">
+
+  <!-- 宛先バー -->
   <div id="topbar">
     <div id="back">←</div>
-    <div id="to"><span>Council Mode</span><br><small>三人寄れば文殊の会議</small></div>
+    <div id="to">
+      <span id="personaLabel">🃏 Joker</span>
+      <small>Charisma GPT</small>
+    </div>
   </div>
 
-  <div id="councilChat"></div>
+  <!-- チャット -->
+  <div id="chat"></div>
+  <div id="thinking">🧠 敵と応戦中… 思考が歪んでいく…</div>
 
-  <div id="inputBar">
-    <input type="text" id="userInput" placeholder="質問を入力…" />
-    <button id="sendBtn">送信</button>
-  </div>
+  <!-- 入力 -->
+  <footer>
+    <input id="input" placeholder="メッセージ…" />
+  </footer>
+
+</div>
+
+<!-- スレッド一覧 -->
+<div id="threads">
+  <header>チャット</header>
+  <div id="threadList"></div>
 </div>
 
 <script>
-const chat = document.getElementById('councilChat');
-const input = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
+/* ===== 設定 ===== */
+const WORKER_URL="https://empty-night-6ba3.pke777100.workers.dev";
 
-// キャラクター別テンプレート
-const characters = [
-  {name: '🃏 Joker', class: 'joker', style:'皮肉・戦略・冷笑'},
-  {name: '💋 Harley', class: 'harley', style:'感情・煽り・直感'},
-  {name: '🤖 Neutral AI', class: 'neutral', style:'冷静・現実・ブレーキ役'}
-];
+/* ===== 状態 ===== */
+let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
+let current=null;
 
-// 送信ボタンクリック処理
-sendBtn.onclick = () => {
-  const question = input.value.trim();
-  if(!question) return;
-  addMessage('あなた', question, 'neutral');
-  input.value = '';
-  
-  // 3人順番に返答（妄想／フィクション）
-  characters.forEach((c, i) => {
-    setTimeout(() => {
-      const response = `${c.style}で一言: 「${question}について考えてみると…」`;
-      addMessage(c.name, response, c.class);
-    }, 400*(i+1));
+/* ===== DOM ===== */
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const thinking=document.getElementById("thinking");
+const threadsUI=document.getElementById("threads");
+const list=document.getElementById("threadList");
+const personaLabel=document.getElementById("personaLabel");
+
+/* ===== ユーティリティ ===== */
+function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
+function add(text,cls){
+  const d=document.createElement("div");
+  d.className="bubble "+cls;
+  d.textContent=text;
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+/* ===== スレッド ===== */
+function newThread(persona="joker"){
+  const id=Date.now().toString();
+  threads[id]={
+    title:"New Chat",
+    persona,
+    messages:[{
+      role:"system",
+      content: persona==="harley"
+        ?"完全フィクション。関西弁。女のハーレクイン。軽く煽る。"
+        :"完全フィクション。関西弁。悪のジョーカー。皮肉とブラックユーモア。"
+    }]
+  };
+  current=id;
+  save();
+  renderThreads();
+  renderChat();
+}
+function renderThreads(){
+  list.innerHTML="";
+  Object.keys(threads).forEach(id=>{
+    const t=threads[id];
+    const d=document.createElement("div");
+    d.className="thread"+(id===current?" active":"");
+    d.textContent=t.title;
+    d.onclick=()=>{current=id;closeThreads();renderChat();}
+    list.appendChild(d);
+  });
+}
+function renderChat(){
+  chat.innerHTML="";
+  const t=threads[current];
+  personaLabel.textContent=t.persona==="harley"?"💋 Harley":"🃏 Joker";
+  t.messages.forEach(m=>{
+    if(m.role==="user")add(m.content,"user");
+    if(m.role==="assistant")add(m.content,"ai");
   });
 }
 
-// メッセージ追加関数
-function addMessage(sender, text, cls){
-  const msg = document.createElement('div');
-  msg.className = `msg ${cls}`;
-  msg.innerHTML = `<div class="sender">${sender}</div><div class="text">${text}</div>`;
-  chat.appendChild(msg);
-  chat.scrollTop = chat.scrollHeight;
+/* ===== 送信 ===== */
+async function send(){
+  const text=input.value.trim();
+  if(!text)return;
+  input.value="";
+  input.disabled=true;
+  add(text,"user");
+
+  const t=threads[current];
+  t.messages.push({role:"user",content:text});
+  save();
+
+  thinking.style.display="block";
+
+  try{
+    const res=await fetch(WORKER_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({messages:t.messages})
+    });
+    const data=await res.json();
+    const reply=data.choices[0].message.content;
+    t.messages.push({role:"assistant",content:reply});
+    add(reply,"ai");
+    t.title=text.slice(0,16);
+    save();renderThreads();
+  }catch(e){
+    add("エラー出たわ："+e.message,"ai");
+  }
+
+  thinking.style.display="none";
+  input.disabled=false;
 }
 
-// Enterキーでも送信
-input.addEventListener('keydown', e => {
-  if(e.key==='Enter') sendBtn.click();
-});
+/* ===== UI操作 ===== */
+document.getElementById("back").onclick=()=>{
+  threadsUI.style.display="flex";
+}
+function closeThreads(){
+  threadsUI.style.display="none";
+}
+input.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
+
+/* ===== 初期化 ===== */
+if(Object.keys(threads).length===0)newThread();
+else{current=Object.keys(threads)[0];renderThreads();renderChat();}
 </script>
 </body>
 </html>

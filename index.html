@@ -2,93 +2,91 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT Evil v1.8</title>
+<meta name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Charisma GPT</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;background:#000;color:#e5e7eb;}
-#app{height:100vh;display:flex;flex-direction:column;}
-#topbar{height:56px;padding:0 12px;display:flex;align-items:center;gap:10px;background:#111;border-bottom:1px solid #444;}
-#personaSelect{display:flex;gap:8px;}
-.personaBtn{padding:6px 10px;border-radius:12px;cursor:pointer;background:#222;color:#fff;}
-.personaBtn.active{background:#555;}
-#chat{flex:1;padding:12px;overflow-y:auto;}
-.bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;}
-.user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
-.ai{background:#1f2937;border-bottom-left-radius:6px;}
-#thinking{display:none;margin:10px;padding:10px 14px;border-radius:16px;font-size:12px;background:radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);animation: drift 2s linear infinite;}
-@keyframes drift{from{background-position:0 0}to{background-position:-200px 0}}
-footer{padding:12px;background:#111;border-top:1px solid #444;display:flex;gap:8px;align-items:center;position:sticky;bottom:0;}
-input{flex:1;padding:14px;border-radius:18px;border:none;outline:none;font-size:16px;}
-button#sendBtn{padding:10px 14px;border-radius:18px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
-#threadMenu{position:fixed;top:56px;left:0;width:100%;background:#111;display:flex;flex-direction:column;z-index:10;display:none;}
-.threadItem{padding:10px;border-bottom:1px solid #444;cursor:pointer;}
-.threadItem.active{background:#333;}
-#newThreadBtn{padding:10px;background:#2563eb;color:#fff;cursor:pointer;text-align:center;}
+body {
+  margin:0;
+  font-family:-apple-system;
+  background:#0b0b0b;
+  color:#fff;
+}
+#chat {
+  padding:16px;
+  padding-bottom:120px;
+}
+.msg {
+  margin:12px 0;
+  line-height:1.6;
+}
+.user { color:#60a5fa }
+.ai { color:#fbbf24 }
+#inputBar {
+  position:fixed;
+  bottom:env(safe-area-inset-bottom);
+  left:0; right:0;
+  display:flex;
+  padding:10px;
+  background:#111;
+}
+input {
+  flex:1;
+  padding:14px;
+  border-radius:14px;
+  border:none;
+}
+button {
+  margin-left:8px;
+  padding:14px;
+}
+#debug {
+  font-size:11px;
+  color:#f87171;
+  white-space:pre-wrap;
+}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="topbar">
-    <div id="personaSelect">
-      <div class="personaBtn active" data-persona="joker">🎭 Joker</div>
-      <div class="personaBtn" data-persona="harley">💋 Harley</div>
-      <div class="personaBtn" data-persona="ai">🤖 AI</div>
-    </div>
-    <div id="threadToggle" style="margin-left:auto;cursor:pointer;">🗂️</div>
-  </div>
-  <div id="chat"></div>
-  <div id="thinking">🧠 Thinking...</div>
-  <footer>
-    <input id="input" placeholder="Message..." />
-    <button id="sendBtn">➤</button>
-  </footer>
-</div>
 
-<div id="threadMenu">
-  <div id="newThreadBtn">＋ New Thread</div>
-  <div id="threadList"></div>
+<div id="chat"></div>
+<div id="debug"></div>
+
+<div id="inputBar">
+  <input id="text" placeholder="問いを投げろ">
+  <button onclick="send()">➤</button>
 </div>
 
 <script>
-const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
-let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
-let current=Object.keys(threads)[0]||null;
-const chat=document.getElementById("chat");
-const input=document.getElementById("input");
-const thinking=document.getElementById("thinking");
-const threadMenu=document.getElementById("threadMenu");
-const threadList=document.getElementById("threadList");
-const personaButtons=document.querySelectorAll(".personaBtn");
+const chat = document.getElementById("chat");
+const debugBox = document.getElementById("debug");
 
-function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
-function addBubble(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
-function renderChat(){chat.innerHTML="";if(!current) return;const t=threads[current];t.messages.forEach(m=>{addBubble(m.content,m.role==="user"?"user":"ai");});chat.scrollTop=chat.scrollHeight;}
-function switchPersona(persona){if(!current) return;threads[current].persona=persona;save();personaButtons.forEach(b=>b.classList.remove("active"));document.querySelector(`.personaBtn[data-persona="${persona}"]`).classList.add("active");}
-function newThread(){const id=Date.now().toString();threads[id]={title:"New Chat",persona:"joker",messages:[]};current=id;save();renderThreads();renderChat();}
-function renderThreads(){threadList.innerHTML="";Object.keys(threads).forEach(id=>{const t=threads[id];const d=document.createElement("div");d.className="threadItem"+(id===current?" active":"");d.textContent=t.title;d.onclick=()=>{current=id;closeThreadMenu();renderChat();};threadList.appendChild(d);});}
-function closeThreadMenu(){threadMenu.style.display="none";}
-document.getElementById("threadToggle").onclick=()=>{threadMenu.style.display=threadMenu.style.display==="flex"?"none":"flex";}
-document.getElementById("newThreadBtn").onclick=newThread;
-personaButtons.forEach(b=>{b.onclick=()=>switchPersona(b.dataset.persona);});
-document.getElementById("sendBtn").onclick=sendMessage;
-input.addEventListener("keydown",e=>{if(e.key==="Enter") sendMessage();});
+async function send() {
+  const text = document.getElementById("text").value;
+  if(!text) return;
 
-async function sendMessage(){
-  const text=input.value.trim();if(!text)return;input.value="";input.disabled=true;addBubble(text,"user");
-  const t=threads[current];t.messages.push({role:"user",content:text});save();thinking.style.display="block";
-  try{
-    const res=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:t.messages})});
-    const data=await res.json();
-    const reply=data.reply||"…夢が途切れた。手は残っている。";
-    t.messages.push({role:"assistant",content:reply});addBubble(reply,"ai");save();renderThreads();
-  }catch(e){
-    const fallback="…夢が途切れた。手は残っている。(Worker Error)";
-    t.messages.push({role:"assistant",content:fallback});addBubble(fallback,"ai");save();renderThreads();
-  }
-  thinking.style.display="none";input.disabled=false;
+  add("user", text);
+  document.getElementById("text").value = "";
+
+  const res = await fetch("YOUR_WORKER_URL", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ message: text })
+  });
+
+  const data = await res.json();
+  add("ai", data.reply);
+  debugBox.textContent = JSON.stringify(data.debug, null, 2);
+  window.scrollTo({ top: document.body.scrollHeight, behavior:"smooth" });
 }
 
-if(!current)newThread();else{renderThreads();renderChat();}
+function add(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  chat.appendChild(d);
+}
 </script>
+
 </body>
 </html>

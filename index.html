@@ -3,107 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT Evil v1.1</title>
+<title>Charisma GPT</title>
 
 <style>
-body{
-  margin:0;
-  background:#000;
-  color:#fff;
-  font-family:-apple-system;
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;}
+html,body{height:100%;background:#000;color:#e5e7eb;overflow:hidden;}
+
+#app{height:100%;display:flex;flex-direction:column;}
+#header{
+  height:52px;
+  padding:0 14px;
+  display:flex;
+  align-items:center;
+  background:#0b0b0b;
+  border-bottom:1px solid #222;
+  font-weight:600;
 }
+
 #chat{
-  padding:16px;
-  height:calc(100vh - 84px);
+  flex:1;
   overflow-y:auto;
+  padding:14px;
+  scroll-behavior:smooth;
 }
+
 .msg{
-  margin-bottom:12px;
+  max-width:80%;
+  padding:12px 14px;
+  margin-bottom:10px;
+  border-radius:18px;
   line-height:1.5;
+  animation:pop .25s ease-out;
 }
 .user{
-  text-align:right;
-  color:#60a5fa;
+  margin-left:auto;
+  background:#2563eb;
+  color:#fff;
+  border-bottom-right-radius:6px;
 }
 .ai{
-  text-align:left;
-  color:#f472b6;
+  background:#1f2937;
+  border-bottom-left-radius:6px;
 }
-footer{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  padding:12px;
-  background:#111;
+
+@keyframes pop{
+  from{transform:scale(.96);opacity:.3}
+  to{transform:scale(1);opacity:1}
+}
+
+/* 入力欄 */
+#inputBar{
+  padding:10px;
+  background:#0b0b0b;
+  border-top:1px solid #222;
+}
+#inputWrap{
   display:flex;
   gap:8px;
 }
-input{
+#input{
   flex:1;
-  font-size:16px;
-  padding:12px;
+  padding:14px;
   border-radius:18px;
   border:none;
   outline:none;
+  font-size:16px;
 }
-button{
-  padding:12px 16px;
+#send{
+  padding:0 16px;
   border-radius:18px;
   border:none;
-  background:#ec4899;
-  color:#000;
+  background:#2563eb;
+  color:#fff;
+  font-weight:600;
+}
+
+/* iPhone Safari キーボード対策 */
+:focus-within{
+  scroll-margin-bottom:120px;
 }
 </style>
 </head>
 
 <body>
+<div id="app">
+  <div id="header">🤖 Charisma GPT</div>
 
-<div id="chat"></div>
+  <div id="chat"></div>
 
-<footer>
-  <input id="input" placeholder="Message Joker…" />
-  <button onclick="send()">➤</button>
-</footer>
+  <div id="inputBar">
+    <div id="inputWrap">
+      <input id="input" placeholder="聞きたいことを書け" />
+      <button id="send">➤</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const WORKER_URL = "https://frosty-shadow-3411.pke777100.workers.dev"
-const chat = document.getElementById("chat")
-const input = document.getElementById("input")
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
 
-let messages = []
+/* === Charisma 安定コア === */
+function charismaReply(text){
+  const t = text.toLowerCase();
 
-function add(text, cls){
-  const d = document.createElement("div")
-  d.className = "msg " + cls
-  d.textContent = text
-  chat.appendChild(d)
-  chat.scrollTop = chat.scrollHeight
+  if(t.includes("何ができ")){
+    return "俺は答えを出すための存在じゃない。\n選択肢と視点を増やす。\n考えを鋭くし、判断を早くする。\n──それがCharisma。";
+  }
+  if(t.includes("はい") || t.includes("え")){
+    return "聞き返す前に考えろ。\nその一瞬に本音が出る。";
+  }
+  if(t.length < 4){
+    return "言葉が短い時ほど、意図は深い。\n続けろ。";
+  }
+
+  return "面白い問いや。\n答えは一つじゃない。\nどこまで踏み込む？";
 }
 
-async function send(){
-  const text = input.value.trim()
-  if(!text) return
-
-  input.value = ""
-  add(text, "user")
-  messages.push({ role:"user", content:text })
-
-  const res = await fetch(WORKER_URL,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ messages })
-  })
-
-  const data = await res.json()
-  add(data.reply, "ai")
-  messages.push({ role:"assistant", content:data.reply })
+function addMsg(text,cls){
+  const d=document.createElement("div");
+  d.className="msg "+cls;
+  d.textContent=text;
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
 }
 
+function send(){
+  const text=input.value.trim();
+  if(!text) return;
+  input.value="";
+  addMsg(text,"user");
+
+  setTimeout(()=>{
+    const reply = charismaReply(text);
+    addMsg(reply,"ai");
+  },300);
+}
+
+sendBtn.onclick=send;
 input.addEventListener("keydown",e=>{
-  if(e.key==="Enter") send()
-})
-</script>
+  if(e.key==="Enter") send();
+});
 
+/* 初期メッセージ */
+setTimeout(()=>{
+  addMsg("静かに始めよう。\n質問はもう頭にあるはずだ。","ai");
+},300);
+</script>
 </body>
 </html>

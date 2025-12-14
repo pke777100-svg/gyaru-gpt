@@ -5,25 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>waru GPT</title>
 <style>
-:root {
-  --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --input:#fff; --accent:#007aff;
+:root{
+ --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --accent:#007aff
 }
-.dark { --bg:#1e1e1e; --side:#2c2c2e; --chat:#3a3a3c; --user:#2f7d4f; --input:#2c2c2e; --accent:#0a84ff; }
+.dark{
+ --bg:#1c1c1e; --chat:#2c2c2e; --user:#2f7d4f; --accent:#0a84ff
+}
 body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overflow:hidden}
 .app{display:flex;height:100%}
 
 /* sidebar */
 .side{
-  position:fixed;top:0;left:0;height:100%;width:260px;
-  background:var(--side);color:#fff;z-index:20;
-  transform:translateX(-100%);transition:.25s;
-  display:flex;flex-direction:column
+ position:fixed;top:0;left:0;height:100%;width:260px;background:var(--side);color:#fff;z-index:20;
+ transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column
 }
 .side.open{transform:translateX(0)}
 .side h1{font-size:16px;margin:10px}
-.side input,.side button{
-  margin:6px;border-radius:6px;border:0;padding:8px
-}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px}
 .list{flex:1;overflow:auto}
 .item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer}
 .item.active{background:#2a2b32}
@@ -31,147 +29,147 @@ body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overf
 .more{padding:4px 8px;font-size:20px;color:#aaa}
 
 /* overlay */
-.overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.4);
-  display:none;z-index:10
-}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
 .overlay.show{display:block}
 
 /* main */
 .main{flex:1;display:flex;flex-direction:column}
-.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center;}
-.chat{flex:1;overflow:auto;padding:12px;background:var(--chat)}
-.msg{display:flex;margin:8px 0}
+.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center}
+.chat{flex:1;overflow:auto;padding:12px}
+.msg{display:flex;margin:8px 0;align-items:flex-end}
 .msg.user{justify-content:flex-end}
 .bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap}
 .msg.user .bubble{background:var(--user)}
 .msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
-.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;gap:4px;align-items:center}
-textarea{flex:1;font-size:16px;padding:6px;border-radius:6px;border:1px solid #ccc;resize:none;background:var(--input);color:inherit}
-button.send{padding:8px 12px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
-input[type="file"]{display:none}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;flex-direction:column;gap:6px}
+textarea{width:100%;font-size:16px;resize:none}
+img.gen{max-width:70%;border-radius:10px}
 
-/* ⚙️メニュー */
-.menuBox{position:fixed;top:10px;right:10px;z-index:30;background:var(--chat);border:1px solid #ccc;padding:10px;border-radius:8px;display:none;flex-direction:column;gap:4px;}
-.menuBox.show{display:flex}
-.menuBox label{display:flex;align-items:center;gap:4px;font-size:14px;cursor:pointer}
-.menuBox input[type="range"]{flex:1}
-.menuBox button{padding:6px;font-size:14px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+/* menu */
+.menuBox{
+ position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px
+}
+.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px}
 
-/* コピー・引用ボタン */
-.msg .ops{margin-left:6px;display:flex;gap:2px}
-.msg .ops button{font-size:12px;padding:2px 4px;border-radius:4px;border:0;background:#ccc;cursor:pointer}
-
-/* 点滅 */
-@keyframes blink {0%{opacity:0}50%{opacity:1}100%{opacity:0}}
-.blink{animation:blink 1s infinite;color:var(--accent)}
+/* 入力中アニメーション */
+.blinking{animation:blinker 1s linear infinite;color:var(--accent)}
+@keyframes blinker{50%{opacity:0}}
 </style>
 </head>
 <body>
-<div class="overlay" id="overlay" onclick="toggleSide(false);toggleMenu(false)"></div>
 
-<!-- Sidebar -->
+<div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
+
+<!-- sidebar -->
 <div class="side" id="side">
-<h1>waru GPT</h1>
-<input placeholder="検索" oninput="renderThreads(this.value)">
-<button onclick="newThread('joker')">🃏ジョーカー</button>
-<button onclick="newThread('harley')">💋ハーレクイン</button>
-<button onclick="newThread('ai')">🤖無機質AI</button>
-<div class="list" id="threads"></div>
-<button onclick="toggleMenu(true)">⚙️設定</button>
+ <h1>waru GPT</h1>
+ <input placeholder="検索" oninput="render(this.value)">
+ <button onclick="newThread('joker')">🃏 ジョーカー</button>
+ <button onclick="newThread('harley')">💋 ハーレクイン</button>
+ <button onclick="newThread('ai')">🤖 無機質AI</button>
+ <div class="list" id="threads"></div>
 </div>
 
-<!-- Main Chat -->
+<!-- main -->
 <div class="app">
-<div class="main">
-<div class="top">
-<span onclick="toggleSide()">☰</span><b>Chat</b>
-</div>
-<div class="chat" id="chat"></div>
-<div class="controls">
-<textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
-<button class="send" onclick="sendMessage()">送信</button>
-<input type="file" id="img">
-<button onclick="document.getElementById('img').click()">🎨画像</button>
-</div>
-</div>
+ <div class="main">
+  <div class="top">
+   <span onclick="toggleSide()">☰</span><b>waru GPT</b>
+   <span style="margin-left:auto;cursor:pointer;" onclick="toggleMenu(true)">⚙️</span>
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="controls">
+   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+   <button onclick="send()">送信</button>
+  </div>
+ </div>
 </div>
 
 <!-- ⚙️設定 -->
 <div class="menuBox" id="menu">
-<label>毒舌度:<input type="range" id="toxic" min="0" max="100" value="50"></label>
-<label>狂気度:<input type="range" id="mad" min="0" max="100" value="50"></label>
-<label>同時返答:<input type="checkbox" id="dual"></label>
-<label>LINE風UI:<input type="checkbox" id="lineUI" onchange="toggleLineUI(this.checked)"></label>
-<label>音声読み上げ:<input type="checkbox" id="voiceRead"></label>
-<button onclick="toggleMenu(false)">閉じる</button>
+ <label>毒舌度: <input type="range" id="toxic" min="0" max="100" value="50"></label>
+ <label>狂気度: <input type="range" id="mad" min="0" max="100" value="50"></label>
+ <label><input type="checkbox" id="dualReply"> ジョーカー&ハーレクイン同時返答</label>
+ <label><input type="checkbox" id="lineUI"> LINE風UI</label>
+ <label><input type="checkbox" id="speech"> 音声読み上げ</label>
+ <button onclick="renameThread()">✏️名前変更</button>
+ <button onclick="deleteThread()">🗑削除</button>
+ <button onclick="toggleMenu(false)">❌閉じる</button>
 </div>
 
 <script>
 const API="https://empty-night-6ba3.pke777100.workers.dev";
-const chat=document.getElementById('chat');
-const q=document.getElementById('q');
-const overlay=document.getElementById('overlay');
-const side=document.getElementById('side');
-const menu=document.getElementById('menu');
-let threads=JSON.parse(localStorage.getItem('THREADS')||'[]');
-let cur=localStorage.getItem('CUR');
+const side=document.getElementById("side");
+const ov=document.getElementById("ov");
+const threadsDiv=document.getElementById("threads");
+const chat=document.getElementById("chat");
+const q=document.getElementById("q");
+const menu=document.getElementById("menu");
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
+let cur=localStorage.getItem("CUR");
 let menuId=null;
 
-function toggleSide(v){const o=v!==undefined?v:!side.classList.contains('open');side.classList.toggle('open',o);overlay.classList.toggle('show',o);}
-function toggleMenu(v){menu.classList.toggle('show',v);overlay.classList.toggle('show',v);}
+function toggleSide(v){
+ const o=v!==undefined?v:!side.classList.contains("open");
+ side.classList.toggle("open",o);
+ ov.classList.toggle("show",o);
+}
+function toggleMenu(v){menu.style.display=v?"block":"none";ov.classList.toggle("show",v)}
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur)}
+function newThread(p){const id="t"+Date.now();threads.unshift({id,title:"New chat",p,his:[],toxic:50,mad:50});cur=id;save();render();toggleSide(false)}
+function openMenu(e,id){e.stopPropagation();menuId=id;toggleMenu(true)}
+function closeMenu(){toggleMenu(false);menuId=null}
+function renameThread(){const t=threads.find(x=>x.id===menuId);if(!t)return;const n=prompt("スレッド名",t.title);if(n){t.title=n;save();render();} closeMenu();}
+function deleteThread(){threads=threads.filter(x=>x.id!==menuId);if(cur===menuId)cur=threads[0]?.id||null;save();render();closeMenu();}
 
-function save(){localStorage.setItem('THREADS',JSON.stringify(threads));localStorage.setItem('CUR',cur);}
-function newThread(p){const id="t"+Date.now();threads.unshift({id,title:"New Chat",persona:p,toxic:50,mad:50,dual:false,his:[]});cur=id;save();renderThreads();toggleSide(false);}
-function renderThreads(f=""){document.getElementById('threads').innerHTML="";threads.filter(t=>t.title.includes(f)).forEach(t=>{const d=document.createElement('div');d.className='item'+(t.id===cur?' active':'');d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;d.onclick=()=>{cur=t.id;save();renderThreads();toggleSide(false)};d.querySelector('.more').onclick=e=>{e.stopPropagation();openMenu(e,t.id)};document.getElementById('threads').appendChild(d);});renderChat();}
-function openMenu(e,id){menuId=id;toggleMenu(true);}
-function closeMenu(){menuId=null;toggleMenu(false);}
-function renameThread(){const t=threads.find(x=>x.id===menuId);if(!t)return;const n=prompt('スレッド名',t.title);if(n){t.title=n;save();renderThreads();}closeMenu();}
-function deleteThread(){threads=threads.filter(x=>x.id!==menuId);if(cur===menuId)cur=threads[0]?.id||null;save();renderThreads();closeMenu();}
-
-function renderChat(){chat.innerHTML='';const t=threads.find(x=>x.id===cur);if(!t)return;t.his.forEach(m=>{if(m.type==='img'){chat.innerHTML+=`<div class="msg ai"><img src="${m.url}" style="max-width:70%;border-radius:10px"></div>`;}else{chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}<span class="ops"><button onclick="copyText('${m.content}')">コピー</button><button onclick="quoteText('${m.content}')">引用</button></span></div></div>`;}});chat.scrollTop=1e9;}
-
-function copyText(text){navigator.clipboard.writeText(text);}
-function quoteText(text){q.value=text;}
-
-function systemPrompt(mem,p){return `
-完全フィクションの脳内🧠世界。
-${p==='joker'?'🃏 ジョーカー':'💋 ハーレクイン'}人格固定。
-毒舌度:${mem.toxic}/100 狂気度:${mem.mad}/100
-英語ジョーク的比喩を関西弁化。
-必ず「フィクションやで」を含める。
-`;}
-
-q.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
-
-async function sendMessage(){
-const t=threads.find(x=>x.id===cur);if(!t)return;
-const text=q.value.trim();if(!text)return;q.value='';
-t.his.push({role:'user',content:text});
-const aiDiv={role:'ai',content:'入力中…'};t.his.push(aiDiv);renderChat();
-const toxic=document.getElementById('toxic').value;
-const mad=document.getElementById('mad').value;
-const dual=document.getElementById('dual').checked;
-const voiceRead=document.getElementById('voiceRead').checked;
-
-const messages=[{role:'system',content:systemPrompt({toxic,mad},t.persona)}];
-messages.push({role:'user',content:text});
-
-try{
-const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages})});
-const data=await res.json();
-t.his.pop();
-const ans=dual ? data.choices.map(c=>c.message.content).join('\n---\n') : data.choices?.[0]?.message?.content||'エラー';
-t.his.push({role:'ai',content:ans});
-save();renderChat();
-if(voiceRead){const u=new SpeechSynthesisUtterance(ans);speechSynthesis.speak(u);}
-}catch(e){t.his.pop();t.his.push({role:'ai',content:'エラー:'+e.message});renderChat();}
+function render(f=""){
+ threadsDiv.innerHTML="";
+ threads.filter(t=>t.title.includes(f)).forEach(t=>{
+  const d=document.createElement("div");
+  d.className="item"+(t.id===cur?" active":"");
+  d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
+  d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
+  d.querySelector(".more").onclick=e=>openMenu(e,t.id);
+  threadsDiv.appendChild(d);
+ });
+ chat.innerHTML="";
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ t.his.forEach(m=>{
+  if(m.type==="img")chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;
+  else chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;
+ });
+ chat.scrollTop=1e9;
 }
 
-function toggleLineUI(v){document.body.classList.toggle('lineUI',v);}
+function persona(p){if(p==="joker")return"🃏ジョーカー";if(p==="harley")return"💋ハーレクイン";return"🤖無機質AI"}
 
-// 初期化
-if(!threads.length)newThread('joker'); else renderThreads();
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
+
+async function send(){
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ const text=q.value.trim(); if(!text)return;q.value="";
+ const toxicV=t.toxic;const madV=t.mad;
+ t.his.push({role:"user",content:text});
+ const blinkDiv=document.createElement("div");blinkDiv.className="msg ai";blinkDiv.innerHTML=`<div class="bubble blinking">入力中…</div>`;
+ chat.appendChild(blinkDiv);chat.scrollTop=1e9;
+
+ const messages=[{role:"system",content:`完全フィクションの脳内🧠世界。\n\n${persona(t.p)}人格固定。毒舌と比喩のみ。必ず「フィクションやで」を含める。\n毒舌度:${toxicV}/100 狂気度:${madV}/100`}];
+ messages.push({role:"user",content:text});
+
+ try{
+  const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages,persona:t.p})});
+  const data=await res.json();
+  chat.removeChild(blinkDiv);
+  const ans=data.choices?.[0]?.message?.content||"エラー";
+  t.his.push({role:"assistant",content:ans});
+  if(document.getElementById("speech").checked){const u=new SpeechSynthesisUtterance(ans);speechSynthesis.speak(u);}
+  if(t.title==="New chat") t.title=ans.replace(/\n/g," ").slice(0,18);
+  save();render();
+ }catch(e){chat.removeChild(blinkDiv);t.his.push({role:"assistant",content:"エラー"});render();}
+}
+
+if(!threads.length)newThread("joker");else render();
 </script>
+
 </body>
 </html>

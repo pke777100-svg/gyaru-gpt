@@ -2,120 +2,164 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Charisma GPT – evil</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Charisma GPT Evil</title>
+<link rel="apple-touch-icon" href="icon.png">
 <style>
-:root{
-  --bg:#0b0d10; --fg:#eaeaf0; --muted:#8b8fa6;
-  --joker:#6b1cff; --harley:#ff2f92;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui}
-#app{display:flex;flex-direction:column;height:100%}
-header{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:10px;background:#0f1220;z-index:10}
-header .title{flex:1;font-weight:700}
-header button{border:0;border-radius:14px;padding:6px 10px;color:#fff;background:#1b1f3b}
-header button.active{background:var(--joker)}
-#chat{flex:1;overflow:auto;padding:14px}
-.msg{max-width:82%;margin:6px 0;padding:10px 12px;border-radius:16px;line-height:1.35;word-break:break-word}
-.me{margin-left:auto;background:#1e223f}
-.ai{background:#14172c}
-.joker{box-shadow:0 0 0 1px rgba(107,28,255,.35)}
-.harley{box-shadow:0 0 0 1px rgba(255,47,146,.35)}
-.meta{font-size:12px;color:var(--muted);margin:2px 6px}
-.typing{display:inline-flex;gap:4px}
-.dot{width:6px;height:6px;border-radius:50%;background:#bbb;animation:b 1.2s infinite}
-.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
-@keyframes b{0%,80%,100%{opacity:.2}40%{opacity:1}}
-footer{position:sticky;bottom:0;padding:10px;background:#0f1220;display:flex;gap:8px;align-items:center}
-input{flex:1;border-radius:18px;border:1px solid #2b2f55;background:#0b0e1f;color:#fff;padding:10px}
-button.send,button.new{border:0;border-radius:18px;padding:10px 14px;background:#2b5cff;color:#fff;flex-shrink:0}
-button.new{background:#2fffa1}
-.shake{animation:s .25s}
-@keyframes s{0%{transform:translate(0)}25%{transform:translate(-1px)}50%{transform:translate(1px)}75%{transform:translate(-1px)}}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system;background:#000;color:#e5e7eb}
+html,body{height:100%;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;position:relative}
+#topbar{height:56px;padding:0 12px;display:flex;align-items:center;gap:10px;background:#111;border-bottom:1px solid #333;position:relative;z-index:20}
+#back{font-size:20px;cursor:pointer}
+#to{flex:1;display:flex;flex-direction:column;cursor:pointer}
+#to span{font-weight:600}
+#to small{font-size:11px;opacity:.6}
+.persona-btn{padding:4px 8px;margin-left:4px;border-radius:8px;border:none;cursor:pointer;font-size:12px}
+#threads{position:fixed;inset:0;background:#111;z-index:10;display:none;flex-direction:column}
+#threads header{padding:14px;font-weight:700;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center}
+.thread{padding:14px;border-bottom:1px solid #333;cursor:pointer}
+.thread.active{background:#222}
+#chat{flex:1;padding:12px;overflow-y:auto;position:relative}
+.bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;word-break:break-word;}
+.user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
+.ai{background:#1f2937;border-bottom-left-radius:6px;}
+#thinking{display:none;margin:10px;padding:10px 14px;border-radius:16px;font-size:12px;background:radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);animation:drift 2s linear infinite;}
+@keyframes drift{from{background-position:0 0}to{background-position:-200px 0}}
+footer{padding:12px;background:#111;border-top:1px solid #333;display:flex;gap:8px}
+input{flex:1;padding:14px;border-radius:18px;border:none;outline:none;font-size:16px}
+button.send{padding:0 12px;border-radius:18px;border:none;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
+button.send:disabled{opacity:.5;cursor:not-allowed;}
+#scorePanel{position:absolute;top:60px;right:10px;background:#222;padding:10px;border-radius:12px;font-size:12px;opacity:0.8;}
+.choice-container{display:flex;gap:8px;margin:6px 0;}
+.choice-btn{background:#ff0000;color:#fff;border-radius:12px;border:none;padding:6px 12px;cursor:pointer;}
 </style>
 </head>
 <body>
 <div id="app">
-<header>
-  <div class="title">Charisma GPT – evil</div>
-  <button id="btnJ" class="active">Joker</button>
-  <button id="btnH">Harley</button>
-  <button id="btnNew" class="new">＋Thread</button>
-</header>
-
-<div id="chat"></div>
-
-<footer>
-<input id="t" placeholder="Message…" autocomplete="off">
-<button class="send">↑</button>
-</footer>
+  <div id="topbar">
+    <div id="back">☰</div>
+    <div id="to">
+      <span id="personaLabel">Joker</span>
+      <small>Charisma GPT Evil</small>
+    </div>
+    <button class="persona-btn" data-persona="joker" style="background:#8b0000;color:#fff">Joker</button>
+    <button class="persona-btn" data-persona="harley" style="background:#ff69b4;color:#000">Harley</button>
+    <button class="persona-btn" data-persona="ai" style="background:#555;color:#fff">AI</button>
+  </div>
+  <div id="chat"></div>
+  <div id="thinking">🌀 thinking...</div>
+  <footer>
+    <input id="input" placeholder="Message..." />
+    <button class="send" id="sendBtn">→</button>
+  </footer>
+  <div id="scorePanel"></div>
 </div>
 
+<div id="threads">
+  <header>Chats <button id="newThread">＋</button></header>
+  <div id="threadList"></div>
+</div>
+
+<audio id="levelUpSound" src="levelup.mp3" preload="auto"></audio>
+
 <script>
-const WORKER_URL = "https://frosty-shadow-3411.pke777100.workers.dev";
-let persona="joker", turn=0, threadId=Date.now().toString();
+const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
+let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
+let current=null;
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const thinking=document.getElementById("thinking");
+const threadsUI=document.getElementById("threads");
+const list=document.getElementById("threadList");
+const personaLabel=document.getElementById("personaLabel");
+const scorePanel=document.getElementById("scorePanel");
+const sendBtn=document.getElementById("sendBtn");
+const levelUpSound=document.getElementById("levelUpSound");
 
-const chat=document.getElementById('chat');
-const t=document.getElementById('t');
+// sample 500 lines
+const jokerLines=[];for(let i=0;i<500;i++){jokerLines.push(`Joker line #${i+1}`);}
+const harleyLines=[];for(let i=0;i<500;i++){harleyLines.push(`Harley line #${i+1}`);}
+const aiLines=[];for(let i=0;i<500;i++){aiLines.push(`AI line #${i+1}`);}
 
-const add=(html,cls)=>{const d=document.createElement('div');d.className=`msg ${cls}`;d.innerHTML=html;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;};
-const meta=(s)=>{const m=document.createElement('div');m.className='meta';m.textContent=s;chat.appendChild(m);};
-
-document.getElementById('btnJ').onclick=()=>setP('joker');
-document.getElementById('btnH').onclick=()=>setP('harley');
-document.getElementById('btnNew').onclick=()=>{
-  chat.innerHTML='';threadId=Date.now().toString();turn=0;meta('New thread');
-};
-
-function setP(p){
-  persona=p;
-  document.getElementById('btnJ').classList.toggle('active',p==='joker');
-  document.getElementById('btnH').classList.toggle('active',p==='harley');
-  document.body.classList.add('shake');setTimeout(()=>document.body.classList.remove('shake'),200);
+function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
+function addBubble(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
+function updateScore(){if(!current)return;scorePanel.textContent="Score: "+(threads[current].score||0);}
+function randomReply(persona){const list=persona==="joker"?jokerLines:(persona==="harley"?harleyLines:aiLines);return list[Math.floor(Math.random()*list.length)];}
+function playLevelUp(){levelUpSound.currentTime=0;levelUpSound.play();}
+function showChoice(options,callback){
+  const container=document.createElement("div");container.className="choice-container";
+  options.forEach(opt=>{
+    const btn=document.createElement("button");btn.className="choice-btn";btn.textContent=opt;
+    btn.onclick=()=>{container.remove();callback(opt);};
+    container.appendChild(btn);
+  });
+  chat.appendChild(container);chat.scrollTop=chat.scrollHeight;
 }
 
-function typing(){
-  const d=document.createElement('div');d.className='msg ai';
-  d.innerHTML=`<span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
-  chat.appendChild(d);chat.scrollTop=chat.scrollHeight;return d;
+// threads
+function newThread(persona="joker"){
+  const id=Date.now().toString();
+  threads[id]={title:"New Chat",persona,messages:[{role:"system",content:persona==="harley"?"Harley Quinn Evil":"Joker Evil"}],score:0};
+  current=id;save();renderThreads();renderChat();
+}
+function renderThreads(){
+  list.innerHTML="";
+  Object.keys(threads).forEach(id=>{
+    const t=threads[id];
+    const d=document.createElement("div");
+    d.className="thread"+(id===current?" active":"");
+    d.textContent=t.title;
+    d.onclick=()=>{current=id;closeThreads();renderChat();}
+    list.appendChild(d);
+  });
+}
+function renderChat(){
+  chat.innerHTML="";
+  if(!current)return;
+  const t=threads[current];
+  personaLabel.textContent=t.persona==="harley"?"Harley":"Joker";
+  t.messages.forEach(m=>{addBubble(m.content,m.role==="user"?"user":"ai");});
+  updateScore();
 }
 
-async function send(msg){
-  if(!msg.trim())return;
-  
-  // フロント即答パターン
-  if(msg.includes("今日の運勢")){
-    add("今日の運勢: ★★★☆☆ 普通。自分次第で好転する。",'ai');
-    t.value=''; return;
-  }
-
-  add(msg,'me'); turn++;
-  const tp=typing();
+// send
+async function sendMessage(){
+  const text=input.value.trim();if(!text||!current)return;
+  input.value="";input.disabled=true;sendBtn.disabled=true;addBubble(text,"user");
+  const t=threads[current];t.messages.push({role:"user",content:text});save();
+  thinking.style.display="block";
   try{
-    const r=await fetch(WORKER_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({msg:msg.trim(),persona,threadId,turn,lang:'auto'})
+    const res=await fetch(WORKER_URL,{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:t.messages})
     });
-    const j=await r.json();
-    tp.remove();
-    add(j.reply,`ai ${persona==='joker'?'joker':'harley'}`);
-  }catch(e){
-    tp.remove();
-    add("…夢が途切れた。だが手は残ってる。",'ai');
-  }
-  t.value='';
+    const data=await res.json();
+    const reply=data.reply||randomReply(t.persona);
+    t.messages.push({role:"assistant",content:reply});addBubble(reply,"ai");
+    t.title=text.slice(0,16);save();renderThreads();
+    // random score update
+    t.score=(t.score||0)+Math.floor(Math.random()*5);updateScore();
+    if(Math.random()<0.2)playLevelUp(); // 20% chance level up sound
+    // 5回に1回選択肢表示
+    if(Math.random()<0.2)showChoice(["Option A","Option B"],opt=>{
+      addBubble("You chose: "+opt,"ai");
+      t.score+=(opt==="Option A"?5:2);updateScore();
+    });
+  }catch(e){addBubble("Worker error…","ai");}
+  thinking.style.display="none";input.disabled=false;sendBtn.disabled=false;
 }
 
-document.querySelector('button.send').onclick=()=>{send(t.value); t.value='';};
-t.addEventListener('keydown',e=>{if(e.key==='Enter'){send(t.value); t.value='';}});
+document.getElementById("back").onclick=()=>{threadsUI.style.display="flex";}
+function closeThreads(){threadsUI.style.display="none";}
+document.getElementById("newThread").onclick=()=>{newThread();};
+sendBtn.onclick=sendMessage;
+input.addEventListener("keydown",e=>{if(e.key==="Enter")sendMessage();});
+document.querySelectorAll(".persona-btn").forEach(b=>b.onclick=e=>{
+  if(!current)return;
+  threads[current].persona=b.dataset.persona;save();renderChat();
+});
 
-meta("悪い奴ほど賢い。— Joker");
-// アドバイス3つ
-meta("1. 沈黙を価値にする");
-meta("2. 断言せず選択肢で終える");
-meta("3. 的中後に理由を明かす");
+// init
+if(Object.keys(threads).length===0)newThread();else{current=Object.keys(threads)[0];renderThreads();renderChat();}
 </script>
 </body>
 </html>

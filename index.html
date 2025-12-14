@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Charisma GPT SMS</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Charisma GPT SMS Full</title>
 <style>
 :root{
   --joker-bg:#0b0214;--harley-bg:#14020a;--evil-bg:#1a0b1a;
@@ -15,7 +15,8 @@ body{margin:0;font-family:-apple-system;background:var(--joker-bg);color:#e5e7eb
 #jokerBtn{background:var(--joker-accent)}
 #harleyBtn{background:var(--harley-accent)}
 #evilBtn{background:var(--evil-accent);display:none}
-#chat{padding:12px;height:calc(100vh - 220px);overflow:auto;display:flex;flex-direction:column}
+#newThreadBtn{background:#2563eb;color:#fff}
+#chat{padding:12px;height:calc(100vh - 250px);overflow:auto;display:flex;flex-direction:column}
 .bubble{max-width:78%;padding:12px 14px;border-radius:18px;margin-bottom:10px;word-break:break-word;position:relative}
 .user{margin-left:auto;background:#2563eb}
 .ai{background:#1f2937}
@@ -34,6 +35,7 @@ canvas{width:100%;height:150px}
   <button id="jokerBtn" class="personaBtn">🃏 Joker</button>
   <button id="harleyBtn" class="personaBtn">💋 Harley</button>
   <button id="evilBtn" class="personaBtn">⚡ Evil Mode</button>
+  <button id="newThreadBtn" class="personaBtn">➕ New Thread</button>
 </div>
 
 <div id="chat"></div>
@@ -48,8 +50,8 @@ canvas{width:100%;height:150px}
 <script>
 const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
 let persona=localStorage.getItem("persona")||"joker";
-let memory=JSON.parse(localStorage.getItem("charismaMemory")||"[]");
-let score=Number(localStorage.getItem("charismaScore")||0);
+let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
+let currentThreadId=null;
 
 const chat=document.getElementById("chat");
 const input=document.getElementById("input");
@@ -57,13 +59,16 @@ const thinking=document.getElementById("thinking");
 const jokerBtn=document.getElementById("jokerBtn");
 const harleyBtn=document.getElementById("harleyBtn");
 const evilBtn=document.getElementById("evilBtn");
+const newThreadBtn=document.getElementById("newThreadBtn");
 
 jokerBtn.onclick=()=>switchPersona("joker");
 harleyBtn.onclick=()=>switchPersona("harley");
 evilBtn.onclick=()=>switchPersona("evil");
+newThreadBtn.onclick=()=>newThread();
 
 applyPersona();
 checkEvilBtn();
+initThreads();
 
 function switchPersona(p){
   persona=p;
@@ -77,12 +82,30 @@ function applyPersona(){
   else document.body.style.background="var(--evil-bg)";
 }
 
-function checkEvilBtn(){if(score>=10) evilBtn.style.display="inline-block"}
+function checkEvilBtn(){if(currentThreadId && threads[currentThreadId].score>=10) evilBtn.style.display="inline-block"; else evilBtn.style.display="none"}
 
-const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Shadow whisper #${i+1}`);
-function showRandomPhrase(){
-  const phrase=randomPhrases[Math.floor(Math.random()*randomPhrases.length)];
-  add(phrase,"ai");
+function initThreads(){
+  if(Object.keys(threads).length===0)newThread();
+  else{currentThreadId=Object.keys(threads)[0];renderChat();}
+}
+
+function newThread(){
+  const id=Date.now().toString();
+  threads[id]={persona, messages:[], score:0};
+  currentThreadId=id;
+  saveThreads();
+  renderChat();
+}
+
+function renderChat(){
+  chat.innerHTML="";
+  if(!currentThreadId)return;
+  const t=threads[currentThreadId];
+  t.messages.forEach(m=>{
+    add(m.content,m.role==="user"?"user":"ai");
+  });
+  applyPersona();
+  checkEvilBtn();
 }
 
 function add(text,cls){
@@ -103,34 +126,37 @@ function translateToJapanese(text){
   return text;
 }
 
+const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Shadow whisper #${i+1}`);
+function showRandomPhrase(){ add(randomPhrases[Math.floor(Math.random()*randomPhrases.length)],"ai") }
+
 async function send(){
+  if(!currentThreadId)return;
   const text=input.value.trim();
   if(!text)return;
   input.value="";
   add(text,"user");
-  memory.push({role:"user",content:text});
-  save();
+  threads[currentThreadId].messages.push({role:"user",content:text});
+  saveThreads();
 
   showRandomPhrase();
-
   const interval=thinkingEffect();
 
   try{
     const res=await fetch(WORKER_URL,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({persona,messages:memory})
+      body:JSON.stringify({persona,messages:threads[currentThreadId].messages})
     });
     const data=await res.json();
     clearInterval(interval);
     thinking.style.display="none";
-    let reply=translateToJapanese(data.reply);
+    let reply=translateToJapanese(data.reply||data.choices?.[0]?.message?.content||"");
     add(reply,"ai");
-    memory.push({role:"assistant",content:reply});
-    score++;
-    save();
+    threads[currentThreadId].messages.push({role:"assistant",content:reply});
+    threads[currentThreadId].score=(threads[currentThreadId].score||0)+1;
+    saveThreads();
     checkEvilBtn();
-    if(score>=20) showPsychTest();
+    if(threads[currentThreadId].score>=20) showPsychTest();
   }catch{
     clearInterval(interval);
     thinking.style.display="none";
@@ -138,11 +164,7 @@ async function send(){
   }
 }
 
-function save(){
-  localStorage.setItem("charismaMemory",JSON.stringify(memory));
-  localStorage.setItem("charismaScore",score);
-  localStorage.setItem("persona",persona);
-}
+function saveThreads(){ localStorage.setItem("charismaThreads",JSON.stringify(threads)) }
 
 function showPsychTest(){
   const canvas=document.getElementById("psychCanvas");
@@ -150,7 +172,7 @@ function showPsychTest(){
   const ctx=canvas.getContext("2d");
   const size=canvas.width/2;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  const segments=[score%100,(100-score%100)];
+  const segments=[threads[currentThreadId].score%100,(100-threads[currentThreadId].score%100)];
   let start=0;
   segments.forEach((v,i)=>{
     ctx.beginPath();
@@ -167,6 +189,7 @@ const charismaAdvices=[
   "記憶は迷いを優先して覚える → 理解される感覚を与える",
   "常に一歩先の視点を提示して去る → 続きが気になり、自然に戻る"
 ];
+
 </script>
 </body>
 </html>

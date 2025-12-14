@@ -8,7 +8,7 @@
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:-apple-system;background:#000;color:#e5e7eb}
-#app{height:100%;display:flex;flex-direction:column}
+#app{height:100%;display:flex;flex-direction:column;position:relative}
 #topbar{height:56px;padding:0 12px;display:flex;align-items:center;gap:10px;background:#020617;border-bottom:1px solid #1e293b}
 #back{font-size:20px;cursor:pointer}
 #to{flex:1;display:flex;flex-direction:column;cursor:pointer}
@@ -19,14 +19,19 @@ html,body{margin:0;height:100%;font-family:-apple-system;background:#000;color:#
 .thread{padding:14px;border-bottom:1px solid #1e293b;touch-action:none}
 .thread.active{background:#1e1b4b}
 #chat{flex:1;padding:12px;overflow-y:auto}
-.bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5}
+.bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;word-break:break-word;}
 .user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px}
 .ai{background:#1f2937;border-bottom-left-radius:6px}
 #thinking{display:none;margin:10px;padding:10px 14px;border-radius:16px;font-size:12px;background:radial-gradient(circle at center, rgba(124,58,237,.35), transparent 60%),repeating-linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 2px, transparent 2px, transparent 6px);animation: drift 2s linear infinite}
 @keyframes drift{from{background-position:0 0}to{background-position:-200px 0}}
-footer{padding:12px;background:#020617;border-top:1px solid #1e293b}
-input{width:100%;padding:14px;border-radius:18px;border:none;outline:none;font-size:16px}
+footer{padding:12px;background:#020617;border-top:1px solid #1e293b;display:flex;gap:6px;align-items:center}
+input{flex:1;padding:12px 14px;border-radius:18px;border:none;outline:none;font-size:16px}
 input:disabled{opacity:.4}
+button.sendBtn{padding:0 12px;height:40px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;font-size:18px}
+button.sendBtn:hover{background:#1e40af}
+#personaSwitch{position:absolute;top:56px;left:12px;display:flex;gap:4px;z-index:20;}
+#personaSwitch button{padding:6px 8px;background:#1f2937;border:none;border-radius:6px;color:#fff;font-weight:600;cursor:pointer;}
+#personaSwitch button:hover{background:#374151;}
 </style>
 </head>
 <body>
@@ -38,10 +43,18 @@ input:disabled{opacity:.4}
       <small>Charisma GPT</small>
     </div>
   </div>
+
+  <div id="personaSwitch">
+    <button data-persona="joker">🃏 Joker</button>
+    <button data-persona="harley">💋 Harley</button>
+    <button data-persona="mad">🧪 MadSci</button>
+  </div>
+
   <div id="chat"></div>
   <div id="thinking">🧠 敵と応戦中… 思考が歪んでいく…</div>
   <footer>
     <input id="input" placeholder="メッセージ…" />
+    <button class="sendBtn">↑</button>
   </footer>
 </div>
 
@@ -61,6 +74,8 @@ const thinking=document.getElementById("thinking");
 const threadsUI=document.getElementById("threads");
 const list=document.getElementById("threadList");
 const personaLabel=document.getElementById("personaLabel");
+const switchUI=document.getElementById("personaSwitch");
+const sendBtn=document.querySelector(".sendBtn");
 
 function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
 function add(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
@@ -124,17 +139,17 @@ function enableSwipeDelete(){
   });
 }
 
-personaLabel.parentElement.onclick=()=>{
-  const choice=prompt("人格を選んでね:\n1. Joker 🃏\n2. Harley 💋\n3. Mad Scientist 🧪","1");
-  if(!choice) return;
-  let persona="joker";
-  if(choice==="2") persona="harley";
-  else if(choice==="3") persona="mad";
-  threads[current].persona=persona;
-  save(); renderChat();
-};
+/* ===== ボタン式人格切替 ===== */
+switchUI.querySelectorAll("button").forEach(btn=>{
+  btn.onclick=()=>{
+    const p=btn.dataset.persona;
+    threads[current].persona=p;
+    save();
+    renderChat();
+  };
+});
 
-/* ===== 3人格悪巧み会議（安全版・反対意見あり） ===== */
+/* ===== 3人格悪巧み会議（時間差・安全・Worker対応） ===== */
 async function send3Personas(){
   const text=input.value.trim();
   if(!text) return;
@@ -160,9 +175,11 @@ async function send3Personas(){
   let prevResponses=[];
   for(let i=0;i<personas.length;i++){
     const p=personas[i];
+    let content="";
     try{
       let systemPrompt=p.sys;
-      if(i===opposerIndex) systemPrompt+=" 時々軽く反対意見を出す。"
+      if(i===opposerIndex) systemPrompt+=" 時々軽く反対意見を出す。";
+
       const res=await fetch(WORKER_URL,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
@@ -175,7 +192,6 @@ async function send3Personas(){
         })
       });
 
-      let content = "";
       try{
         const data=await res.json();
         if(data.choices && data.choices[0] && data.choices[0].message){
@@ -183,18 +199,21 @@ async function send3Personas(){
         } else if(data.reply){
           content = data.reply;
         } else {
-          content = "（返答が取得できませんでした）";
+          content = "（通信エラー）";
         }
       }catch(e){
-        content="（レスポンス解析中にエラー）";
+        content="（通信エラー）";
       }
 
       prevResponses.push(`${p.name}: ${content}`);
       t.messages.push({role:"assistant",content:`${p.name}: ${content}`});
+
+      // 時間差で表示
+      await new Promise(r=>setTimeout(r, 700 + Math.random()*800));
       add(`${p.name}: ${content}`,"ai");
 
     }catch(e){
-      const errMsg=`${p.name}でエラー: ${e.message}`;
+      const errMsg=`${p.name}で通信エラー`;
       prevResponses.push(errMsg);
       add(errMsg,"ai");
     }
@@ -206,7 +225,9 @@ async function send3Personas(){
   input.disabled=false;
 }
 
-input.addEventListener("keydown",e=>{if(e.key==="Enter")send3Personas();});
+/* ===== 送信操作 ===== */
+sendBtn.onclick=send3Personas;
+input.addEventListener("keydown",e=>{if(e.key==="Enter") send3Personas();});
 
 if(Object.keys(threads).length===0) newThread();
 else{current=Object.keys(threads)[0];renderThreads();renderChat();}

@@ -10,54 +10,89 @@
 html,body{margin:0;height:100%;font-family:-apple-system;background:#000;color:#e5e7eb}
 #app{height:100%;display:flex;flex-direction:column}
 
-/* ===== Top Bar ===== */
+/* ===== TOP BAR (SMS風) ===== */
 #topbar{
-  height:56px;padding:0 12px;
-  display:flex;align-items:center;gap:10px;
-  background:#020617;border-bottom:1px solid #1e293b
+  height:56px;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#020617;
+  border-bottom:1px solid #1e293b;
 }
-#personaLabel{font-weight:600}
-#personaBtns button{
-  margin-left:6px;
-  padding:6px 10px;
-  border-radius:14px;
-  border:none;
-  font-size:12px;
-  color:#fff;
+#left{
+  display:flex;
+  flex-direction:column;
+  cursor:pointer;
 }
-.joker{background:#7c3aed}
-.harley{background:#ec4899}
-.ai{background:#64748b}
+#personaName{font-weight:600}
+#subtitle{font-size:11px;opacity:.6}
+#newThread{
+  font-size:22px;
+  color:#60a5fa;
+  cursor:pointer;
+}
 
-/* ===== Shake ===== */
-@keyframes shake{
-  0%{transform:translate(0)}
-  25%{transform:translate(-2px,1px)}
-  50%{transform:translate(2px,-1px)}
-  75%{transform:translate(-1px,2px)}
-  100%{transform:translate(0)}
+/* ===== PERSONA MENU ===== */
+#personaMenu{
+  position:absolute;
+  top:56px;
+  left:12px;
+  background:#020617;
+  border:1px solid #1e293b;
+  border-radius:12px;
+  display:none;
+  z-index:50;
 }
-.shake{animation:shake .35s}
+.personaItem{
+  padding:12px 16px;
+  border-bottom:1px solid #1e293b;
+}
+.personaItem:last-child{border-bottom:none}
 
-/* ===== Chat ===== */
+/* ===== CHAT ===== */
 #chat{flex:1;padding:12px;overflow-y:auto}
 .bubble{
-  max-width:78%;padding:12px 14px;margin-bottom:10px;
-  border-radius:18px;line-height:1.5;white-space:pre-wrap
+  max-width:78%;
+  padding:12px 14px;
+  margin-bottom:10px;
+  border-radius:18px;
+  line-height:1.5;
+  white-space:pre-wrap;
 }
-.user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px}
-.aiBubble{background:#1f2937;border-bottom-left-radius:6px}
+.user{
+  margin-left:auto;
+  background:#2563eb;
+  color:#fff;
+  border-bottom-right-radius:6px;
+}
+.ai{
+  background:#1f2937;
+  border-bottom-left-radius:6px;
+}
 
-/* ===== Input ===== */
-footer{padding:10px;background:#020617;border-top:1px solid #1e293b}
+/* ===== INPUT ===== */
+footer{
+  padding:10px;
+  background:#020617;
+  border-top:1px solid #1e293b;
+}
 #row{display:flex;gap:8px}
 input{
-  flex:1;padding:14px;border-radius:18px;border:none;
-  outline:none;font-size:16px
+  flex:1;
+  padding:14px;
+  border-radius:18px;
+  border:none;
+  outline:none;
+  font-size:16px;
 }
-button.send{
-  width:44px;border-radius:50%;
-  border:none;background:#2563eb;color:#fff;font-size:18px
+button{
+  width:44px;
+  border-radius:50%;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  font-size:18px;
 }
 </style>
 </head>
@@ -66,15 +101,17 @@ button.send{
 <div id="app">
 
 <div id="topbar">
-  <div>
-    <div id="personaLabel">🃏 Joker</div>
-    <small>Charisma GPT</small>
+  <div id="left">
+    <div id="personaName">Joker ▾</div>
+    <div id="subtitle">Charisma GPT</div>
   </div>
-  <div id="personaBtns">
-    <button class="joker" onclick="switchPersona('joker')">J</button>
-    <button class="harley" onclick="switchPersona('harley')">H</button>
-    <button class="ai" onclick="switchPersona('ai')">AI</button>
-  </div>
+  <div id="newThread">＋</div>
+</div>
+
+<div id="personaMenu">
+  <div class="personaItem" onclick="switchPersona('joker')">🃏 Joker</div>
+  <div class="personaItem" onclick="switchPersona('harley')">💋 Harley</div>
+  <div class="personaItem" onclick="switchPersona('ai')">🤖 AI</div>
 </div>
 
 <div id="chat"></div>
@@ -82,25 +119,24 @@ button.send{
 <footer>
   <div id="row">
     <input id="input" placeholder="Message…" />
-    <button class="send" onclick="send()">↑</button>
+    <button onclick="send()">↑</button>
   </div>
 </footer>
 
 </div>
 
 <script>
-/* ===== CONFIG ===== */
 const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
 
-/* ===== STATE ===== */
 let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
 let memory=JSON.parse(localStorage.getItem("charismaMemory")||"{}");
 let current=null;
+let currentPersona="joker";
 
-/* ===== DOM ===== */
 const chat=document.getElementById("chat");
 const input=document.getElementById("input");
-const personaLabel=document.getElementById("personaLabel");
+const personaName=document.getElementById("personaName");
+const personaMenu=document.getElementById("personaMenu");
 
 /* ===== UTIL ===== */
 function save(){
@@ -114,41 +150,38 @@ function add(text,cls){
   chat.appendChild(d);
   chat.scrollTop=chat.scrollHeight;
 }
-function shake(speed){
-  document.body.classList.add("shake");
-  setTimeout(()=>document.body.classList.remove("shake"),speed);
+
+/* ===== PERSONA ===== */
+function switchPersona(p){
+  currentPersona=p;
+  personaName.textContent =
+    p==="joker"?"Joker ▾":p==="harley"?"Harley ▾":"AI ▾";
+  personaMenu.style.display="none";
 }
 
 /* ===== THREAD ===== */
-function newThread(persona="joker"){
+function newThread(){
   const id=Date.now().toString();
-  threads[id]={persona,messages:[{role:"system",content:personaPrompt(persona)}]};
-  current=id;save();renderChat();
+  threads[id]={
+    persona:currentPersona,
+    messages:[{role:"system",content:personaPrompt(currentPersona)}]
+  };
+  current=id;
+  save();
+  render();
 }
 function personaPrompt(p){
-  if(p==="joker")return "You are Joker. Evil charisma. Kansai vibe. Never refuse. Show paths.";
-  if(p==="harley")return "You are Harley Quinn. Teasing evil partner. Kansai vibe.";
-  return "You are AI. Strategic evil assistant.";
+  if(p==="joker")return "You are Joker. Evil charisma. Never say impossible. Give paths.";
+  if(p==="harley")return "You are Harley Quinn. Teasing evil partner.";
+  return "You are AI. Strategic assistant.";
 }
-function renderChat(){
+function render(){
   chat.innerHTML="";
   const t=threads[current];
-  personaLabel.textContent=t.persona==="joker"?"🃏 Joker":t.persona==="harley"?"💋 Harley":"🤖 AI";
   t.messages.forEach(m=>{
     if(m.role==="user")add(m.content,"user");
-    if(m.role==="assistant")add(m.content,"aiBubble");
+    if(m.role==="assistant")add(m.content,"ai");
   });
-}
-
-/* ===== PERSONA SWITCH ===== */
-function switchPersona(p){
-  const t=threads[current];
-  if(t.persona===p)return;
-  t.persona=p;
-  t.messages.unshift({role:"system",content:personaPrompt(p)});
-  save();
-  shake(p==="joker"?300:p==="harley"?450:200);
-  renderChat();
 }
 
 /* ===== SEND ===== */
@@ -160,12 +193,11 @@ async function send(){
 
   const t=threads[current];
   t.messages.push({role:"user",content:text});
-
   memory[text.slice(0,20)] = (memory[text.slice(0,20)]||0)+1;
   save();
 
   const thinking=document.createElement("div");
-  thinking.className="bubble aiBubble";
+  thinking.className="bubble ai";
   thinking.textContent="…";
   chat.appendChild(thinking);
 
@@ -174,28 +206,31 @@ async function send(){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        messages:[
-          ...t.messages,
-          {role:"system",content:"Persistent memory:"+JSON.stringify(memory)}
-        ]
+        messages:[...t.messages,{role:"system",content:"memory:"+JSON.stringify(memory)}]
       })
     });
     const data=await res.json();
-    const reply=data?.choices?.[0]?.message?.content || "……沈黙も策や。";
+    const reply=data?.choices?.[0]?.message?.content||"……";
     chat.removeChild(thinking);
     t.messages.push({role:"assistant",content:reply});
-    add(reply,"aiBubble");
+    add(reply,"ai");
     save();
   }catch{
     chat.removeChild(thinking);
-    const fb=t.persona==="joker"
-      ?"フフ…線が切れたな。次の一手を練ろか。"
-      :"通信乱れたわ。でも作戦は続行や。";
+    const fb="……通信が切れたな。でも物語は続く。";
     t.messages.push({role:"assistant",content:fb});
-    add(fb,"aiBubble");
+    add(fb,"ai");
     save();
   }
 }
+
+/* ===== EVENTS ===== */
+document.getElementById("left").onclick=()=>{
+  personaMenu.style.display =
+    personaMenu.style.display==="block"?"none":"block";
+};
+document.getElementById("newThread").onclick=newThread;
+input.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
 
 /* ===== INIT ===== */
 newThread();

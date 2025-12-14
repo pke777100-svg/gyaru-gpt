@@ -6,170 +6,180 @@
 <title>waru GPT</title>
 <style>
 :root{
- --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --typing:#4a90e2
+  --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --primary:#4a90e2;
 }
-.dark{
- --bg:#1e1e1e; --chat:#2c2c2c; --user:#3b8c6d; --typing:#4a90e2
+body.dark{
+  --bg:#1e1e1e; --chat:#2c2c2c; --user:#3f7d4f; --primary:#1a73e8;
 }
-body{margin:0;font-family:-apple-system; background:var(--bg); height:100vh; overflow:hidden}
+body{margin:0;font-family:-apple-system; background:var(--bg);height:100vh;overflow:hidden}
 .app{display:flex;height:100%}
-.side{position:fixed;top:0;left:0;height:100%;width:260px;background:var(--side);color:#fff;z-index:20;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column}
-.side.open{transform:translateX(0)}
-.side h1{font-size:14px;margin:10px}
-.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px}
-.list{flex:1;overflow:auto}
-.item{padding:10px;border-bottom:1px solid #2a2b32; display:flex;align-items:center;gap:6px;cursor:pointer}
-.item.active{background:#2a2b32}
-.more{padding:4px 8px;font-size:20px;color:#aaa}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4); display:none;z-index:10}
-.overlay.show{display:block}
-.main{flex:1;display:flex;flex-direction:column}
-.top{padding:10px;background:var(--chat); border-bottom:1px solid #ddd; display:flex;gap:10px}
-.chat{flex:1;overflow:auto;padding:12px}
-.msg{display:flex;margin:8px 0}
-.msg.user{justify-content:flex-end}
-.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap;position:relative}
-.msg.user .bubble{background:var(--user)}
-.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
-.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;flex-direction:column;gap:4px}
-textarea{width:100%;font-size:16px;resize:none}
-input[type=file]{margin-top:4px}
-.menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px}
-.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px}
-.blinking{animation:blink 1s step-start 0s infinite}@keyframes blink{50%{opacity:0}}
-.copyBtn{position:absolute;top:4px;right:4px;background:#ccc;border:none;border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer}
+
+/* sidebar */
+.side{position:fixed;top:0;left:0;height:100%;width:260px;background:var(--side);color:#fff;z-index:20;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column;}
+.side.open{transform:translateX(0);}
+.side h1{font-size:16px;margin:10px;}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px;}
+.list{flex:1;overflow:auto;}
+.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.item.active{background:#2a2b32;}
+.item span.title{flex:1;}
+.more{padding:4px 8px;font-size:20px;color:#aaa;cursor:pointer;}
+
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10;}
+.overlay.show{display:block;}
+
+/* main */
+.main{flex:1;display:flex;flex-direction:column;}
+.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center;}
+.chat{flex:1;overflow:auto;padding:12px;}
+.msg{display:flex;margin:8px 0;align-items:flex-end;}
+.msg.user{justify-content:flex-end;}
+.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap;}
+.msg.user .bubble{background:var(--user);}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd;}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;flex-direction:column;gap:4px;}
+textarea{width:100%;font-size:16px;resize:none;}
+.gen{max-width:70%;border-radius:10px;}
+
+/* buttons */
+.settings{margin-left:auto;cursor:pointer;}
+.blink{animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+
+/* theme switch */
+.theme-btn{padding:6px 8px;border-radius:4px;border:0;cursor:pointer;background:var(--primary);color:#fff;margin:0 2px;}
 </style>
 </head>
 <body>
-<div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
+
+<div class="overlay" id="ov" onclick="toggleSide(false)"></div>
+
+<!-- sidebar -->
 <div class="side" id="side">
- <h1>waru GPT</h1>
- <input placeholder="検索" oninput="render(this.value)">
- <button onclick="newThread('joker')">🃏 ジョーカー</button>
- <button onclick="newThread('harley')">💋 ハーレクイン</button>
- <button onclick="newThread('ai')">🤖 無機質AI</button>
- <div class="list" id="threads"></div>
- <button onclick="share()">🔗 共有URL</button>
- <button onclick="toggleTheme()">🎨 LINE風/通常切替</button>
- <div id="settings">
-   <label>🃏+💋 二人同時返答 <input type="checkbox" id="dualPersona"></label>
-   <label>毒舌度: <input type="range" min="0" max="100" id="toxic" value="50"></label>
-   <label>狂気度: <input type="range" min="0" max="100" id="mad" value="50"></label>
- </div>
+  <h1>waru GPT ⚙️</h1>
+  <input placeholder="検索" oninput="renderThreads(this.value)">
+  <button onclick="newThread('joker')">🃏 ジョーカー</button>
+  <button onclick="newThread('harley')">💋 ハーレクイン</button>
+  <button onclick="newThread('ai')">🤖 無機質AI</button>
+  <div class="list" id="threads"></div>
+  <button onclick="toggleTheme()">🎨 テーマ切替</button>
 </div>
 
 <div class="app">
- <div class="main">
-  <div class="top">
-   <span onclick="toggleSide()">☰</span><b>Chat</b>
+  <div class="main">
+    <div class="top">
+      <span onclick="toggleSide()">☰</span><b id="threadTitle">New Chat</b>
+      <span class="settings" onclick="openSettings()">⚙️</span>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="controls">
+      <input type="file" id="img" accept="image/*">
+      <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+      <div style="display:flex;gap:4px;margin-top:4px;">
+        <button onclick="sendMessage()">送信</button>
+        <button onclick="generateImage()">🎨画像生成</button>
+      </div>
+    </div>
   </div>
-  <div class="chat" id="chat"></div>
-  <div class="controls">
-   <input type="file" id="img" accept="image/*">
-   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
-   <button onclick="send()">送信</button>
-  </div>
- </div>
-</div>
-
-<div class="menuBox" id="menu">
- <button onclick="renameThread()">✏️ 名前変更</button>
- <button onclick="deleteThread()">🗑 削除</button>
- <button onclick="closeMenu()">❌ キャンセル</button>
 </div>
 
 <script>
-const API="https://empty-night-6ba3.pke777100.workers.dev"; 
-const side=document.getElementById("side");
-const ov=document.getElementById("ov");
-const threadsDiv=document.getElementById("threads");
+const API="https://empty-night-6ba3.pke777100.workers.dev";
 const chat=document.getElementById("chat");
 const q=document.getElementById("q");
-const menu=document.getElementById("menu");
+const threadsDiv=document.getElementById("threads");
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
-let cur=localStorage.getItem("CUR");
-let menuId=null;
-let typingDiv=null;
+let curThread=localStorage.getItem("CUR_THREAD")||null;
+let curPersona="joker";
+let threadSettings={};
 
-function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open"); side.classList.toggle("open",o); ov.classList.toggle("show",o);}
+// UI functions
+function toggleSide(show){document.getElementById("side").classList.toggle("open",show);document.getElementById("ov").classList.toggle("show",show);}
 function toggleTheme(){document.body.classList.toggle("dark");}
-function save(){localStorage.setItem("THREADS",JSON.stringify(threads)); localStorage.setItem("CUR",cur);}
+function openSettings(){alert("ここでスレッドごとの毒舌度・狂気度・音声読み上げなど設定可能");}
 
-function newThread(p){
- const id="t"+Date.now();
- threads.unshift({id,title:"New chat",persona:p,his:[],toxic:50,mad:50});
- cur=id;save();render();toggleSide(false);
+// Thread functions
+function newThread(persona){
+  const id="t"+Date.now();
+  const t={id,title:"New Chat",persona,history:[],settings:{toxic:50,mad:50,voice:false}};
+  threads.unshift(t); curThread=id; saveThreads(); renderThreads(); renderChat();
+}
+function renderThreads(filter=""){
+  threadsDiv.innerHTML="";
+  threads.filter(t=>t.title.includes(filter)).forEach(t=>{
+    const d=document.createElement("div");
+    d.className="item"+(t.id===curThread?" active":"");
+    d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
+    d.onclick=()=>{curThread=t.id;renderChat();renderThreads();}
+    d.querySelector(".more").onclick=e=>{e.stopPropagation();openSettings();}
+    threadsDiv.appendChild(d);
+  });
+}
+function saveThreads(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR_THREAD",curThread);}
+
+// Chat functions
+function renderChat(){
+  chat.innerHTML="";
+  if(!curThread) return;
+  const t=threads.find(x=>x.id===curThread);
+  document.getElementById("threadTitle").textContent=t.title;
+  t.history.forEach(m=>{
+    if(m.type==="img"){chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;}
+    else{chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;}
+  });
+  chat.scrollTop=1e9;
 }
 
-function openMenu(e,id){e.stopPropagation();menuId=id;menu.style.display="block";ov.classList.add("show");}
-function closeMenu(){menu.style.display="none";menuId=null;ov.classList.remove("show");}
-function renameThread(){const t=threads.find(x=>x.id===menuId); if(!t)return; const n=prompt("スレッド名",t.title); if(n){t.title=n;save();render();} closeMenu();}
-function deleteThread(){threads=threads.filter(x=>x.id!==menuId); if(cur===menuId)cur=threads[0]?.id||null; save();render();closeMenu();}
+// Send message
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}};
+async function sendMessage(){
+  if(!curThread) return;
+  const t=threads.find(x=>x.id===curThread);
+  const text=q.value.trim(); if(!text) return;
+  q.value="";
+  t.history.push({role:"user",content:text});
+  const aiDiv=document.createElement("div"); aiDiv.className="msg ai"; aiDiv.innerHTML=`<div class="bubble blink">入力中…</div>`; chat.appendChild(aiDiv); chat.scrollTop=1e9;
 
-function render(f=""){
- threadsDiv.innerHTML="";
- threads.filter(t=>t.title.includes(f)).forEach(t=>{
-  const d=document.createElement("div");
-  d.className="item"+(t.id===cur?" active":"");
-  d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
-  d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
-  d.querySelector(".more").onclick=e=>openMenu(e,t.id);
-  threadsDiv.appendChild(d);
- });
- chat.innerHTML="";
- const t=threads.find(x=>x.id===cur); if(!t)return;
- t.his.forEach(m=>{
-  const div=document.createElement("div"); div.className="msg "+(m.role==="user"?"user":"ai");
-  const b=document.createElement("div"); b.className="bubble"; 
-  b.textContent=m.content||""; 
-  if(m.role==="ai"||m.role==="user"){const cb=document.createElement("button"); cb.textContent="…"; cb.className="copyBtn"; cb.onclick=()=>{navigator.clipboard.writeText(m.content)}; b.appendChild(cb);}
-  div.appendChild(b); chat.appendChild(div);
- });
- chat.scrollTop=1e9;
+  // Call API
+  try{
+    const res=await fetch(API,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"gpt-4o-mini",
+        messages:[
+          {role:"system",content:`完全フィクション。人格:${t.persona}。毒舌度:${t.settings.toxic}/100 狂気度:${t.settings.mad}/100`},
+          {role:"user",content:text}
+        ]
+      })
+    });
+    const data=await res.json();
+    const ans=data.choices?.[0]?.message?.content||"エラー";
+    t.history.push({role:"assistant",content:ans});
+    renderChat();
+    saveThreads();
+    // Voice read
+    if(t.settings.voice){const utter=new SpeechSynthesisUtterance(ans);speechSynthesis.speak(utter);}
+  }catch(e){aiDiv.innerHTML=`<div class="bubble">エラー: ${e.message}</div>`;}
 }
 
-q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
-
-async function send(){
- const t=threads.find(x=>x.id===cur);if(!t)return;
- const text=q.value.trim();if(!text)return;q.value="";
- t.his.push({role:"user",content:text});
- typingDiv=document.createElement("div"); typingDiv.className="msg ai";
- const b=document.createElement("div"); b.className="bubble blinking"; b.textContent="入力中…"; typingDiv.appendChild(b); chat.appendChild(typingDiv); chat.scrollTop=1e9;
-
- const dual=document.getElementById("dualPersona").checked;
- const toxic=t.toxic; const mad=t.mad;
- let messages=[];
-
- if(dual){
-   messages.push({role:"system",content:`完全フィクション🧠世界。🃏ジョーカー人格。毒舌度:${toxic}/狂気度:${mad}`});
-   messages.push({role:"system",content:`完全フィクション🧠世界。💋ハーレクイン人格。毒舌度:${toxic}/狂気度:${mad}`});
- } else {
-   messages.push({role:"system",content:`完全フィクション🧠世界。${t.persona==="joker"?"🃏ジョーカー":"💋ハーレクイン"}人格。毒舌度:${toxic}/狂気度:${mad}`});
- }
- messages.push({role:"user",content:text});
-
- try{
-   const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-4o-mini",messages})});
-   const data=await res.json();
-   chat.removeChild(typingDiv); typingDiv=null;
-   if(dual){
-     t.his.push({role:"ai",content:"🃏 "+(data.choices?.[0]?.message?.content||"エラー")});
-     t.his.push({role:"ai",content:"💋 "+(data.choices?.[1]?.message?.content||"エラー")});
-   } else {
-     t.his.push({role:"ai",content:data.choices?.[0]?.message?.content||"エラー"});
-   }
-   if(t.title==="New chat") t.title=(data.choices?.[0]?.message?.content||"New chat").slice(0,18);
-   save();render();
- }catch(e){
-   chat.removeChild(typingDiv); typingDiv=null;
-   t.his.push({role:"ai",content:"エラー: "+e.message}); save(); render();
- }
+// Image generation
+async function generateImage(){
+  if(!curThread) return;
+  const t=threads.find(x=>x.id===curThread);
+  const p=prompt("生成したい画像の内容"); if(!p) return;
+  try{
+    const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})});
+    const d=await r.json();
+    const url=d.data?.[0]?.url;
+    t.history.push({type:"img",url});
+    renderChat(); saveThreads();
+  }catch(e){alert("画像生成エラー:"+e.message);}
 }
 
-function share(){const t=threads.find(x=>x.id===cur); if(!t)return; location.hash=btoa(encodeURIComponent(JSON.stringify(t))); alert("URLコピーして共有してな");}
-if(location.hash.length>1){try{const t=JSON.parse(decodeURIComponent(atob(location.hash.slice(1)))); threads=[t]; cur=t.id; save();}catch(e){}}
-if(!threads.length)newThread("joker"); else render();
+// Init
+if(!threads.length) newThread("joker"); else {renderThreads(); renderChat();}
 </script>
 </body>
 </html>

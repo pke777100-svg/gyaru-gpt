@@ -14,8 +14,9 @@ html,body{height:100%;}
 #to span{font-weight:700}
 #to small{font-size:11px;opacity:.6}
 #threads{position:fixed;inset:0;background:#020617;z-index:20;display:none;flex-direction:column}
-#threads header{padding:14px;font-weight:700;border-bottom:1px solid #1e293b}
-.thread{padding:14px;border-bottom:1px solid #1e293b;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:none}
+#threads header{padding:14px;font-weight:700;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center}
+#threadList{overflow-y:auto;flex:1}
+.thread{padding:8px 12px;border-bottom:1px solid #1e293b;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:none}
 .thread.active{background:#1e1b4b}
 .thread button{background:none;border:none;color:#f00;font-weight:700;cursor:pointer;font-size:14px}
 #chat{flex:1;padding:12px;overflow-y:auto;position:relative}
@@ -26,6 +27,8 @@ footer{padding:12px;background:#020617;border-top:1px solid #1e293b;display:flex
 input{flex:1;padding:12px 14px;border-radius:18px;border:none;outline:none;font-size:16px}
 button.sendBtn{padding:0 12px;height:40px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;font-size:18px}
 button.sendBtn:hover{background:#1e40af}
+button.newThreadBtn{padding:4px 10px;border-radius:6px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-weight:700;margin-left:8px}
+button.newThreadBtn:hover{background:#1e40af}
 .twochoice{display:flex;gap:12px;margin:12px 0;transition:transform .2s}
 .twochoice button{flex:1;padding:12px;border-radius:14px;border:none;font-weight:700;cursor:pointer}
 .joker{background:#7c3aed;color:#fff}
@@ -52,13 +55,15 @@ button.sendBtn:hover{background:#1e40af}
 </div>
 
 <div id="threads">
-  <header>Chats</header>
+  <header>
+    <span>Chats</span>
+    <button class="newThreadBtn">+ New Chat</button>
+  </header>
   <div id="threadList"></div>
 </div>
 
 <script>
 const WORKER_URL="https://empty-night-6ba3.pke777100.workers.dev";
-
 let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
 let current=null;
 let sendCount=0;
@@ -69,6 +74,7 @@ const input=document.getElementById("input");
 const sendBtn=document.querySelector(".sendBtn");
 const list=document.getElementById("threadList");
 const personaLabel=document.getElementById("personaLabel");
+const newThreadBtn=document.querySelector(".newThreadBtn");
 
 function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
 function add(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
@@ -77,15 +83,15 @@ function shake(speed=5){app.style.transform=`translate(${Math.random()*speed-0.5
 function newThread(persona){
   const id=Date.now().toString();
   threads[id]={
-    title:persona.charAt(0).toUpperCase()+persona.slice(1),
+    title:"New Chat",
     persona,
     messages:[
       {role:"system",content:
         persona==="harley"
-        ?"Completely fictional. Playful, teasing tone."
+        ?"完全フィクション。関西弁で軽く煽る女キャラクター。皮肉たっぷり。"
         :persona==="mad"
-        ?"Completely fictional. Logical, creative, slightly insane."
-        :"Completely fictional. Sarcastic & black humor."}
+        ?"完全フィクション。論理的で少し狂気のあるAI。刺激的。"
+        :"完全フィクション。悪のジョーカー。皮肉とブラックユーモア。関西弁。"}
     ]
   };
   current=id; save(); renderThreads(); renderChat();
@@ -131,6 +137,8 @@ function renderChat(){
 document.getElementById("back").onclick=()=>{document.getElementById("threads").style.display="flex";}
 function closeThreads(){document.getElementById("threads").style.display="none";}
 
+newThreadBtn.onclick=()=>{const personas=["joker","harley","mad"];const persona=personas[Math.floor(Math.random()*3)];newThread(persona);};
+
 async function send(){
   if(!current) return;
   const text=input.value.trim();
@@ -175,14 +183,14 @@ async function send(){
     });
 
     const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content || data.reply || "(Communication error)";
+    const reply=data.choices?.[0]?.message?.content || data.reply || "あーもー、Worker が暴走しとるわ…ちょっと待っときや";
     t.messages.push({role:"assistant",content:reply});
     chat.removeChild(thinkingBubble);
     add(reply,"ai "+(t.persona==="harley"?"harley":t.persona==="mad"?"madsci":"joker"));
     save();
   }catch(e){
     chat.removeChild(thinkingBubble);
-    add("(Communication error)","ai");
+    add("あーもー、Worker が暴走しとるわ…ちょっと待っときや","ai");
   }
 
   renderThreads();

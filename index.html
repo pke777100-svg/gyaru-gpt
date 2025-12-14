@@ -3,276 +3,275 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>🃏 waru GPT</title>
+<title>🃏 Charisma GPT</title>
+
+<meta name="description" content="Charisma GPT - Fictional AI with Joker & Harley personas">
+<meta name="keywords" content="AI, Joker AI, Charisma, Fictional GPT">
+
+<link rel="manifest" href="manifest.json">
 
 <style>
 :root{
-  --bg:#0f0f0f;
-  --panel:#111;
-  --border:#222;
-  --joker:#7c3aed;
-  --harley:#ec4899;
-  --neutral:#3b82f6;
+  --bg:#0b0b0f;
+  --fg:#e5e7eb;
+  --c:#8b5cf6;
 }
-
 body{
   margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+  background:var(--bg);
+  color:var(--fg);
   height:100vh;
   display:flex;
-  background:var(--bg);
-  color:#fff;
-  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
-}
-
-aside{
-  width:260px;
-  background:#0b0b0b;
-  border-right:1px solid var(--border);
-  display:flex;
   flex-direction:column;
+  overflow:hidden;
 }
-
-aside button{
-  margin:10px;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#2563eb;
-  color:#fff;
-}
-
-#threads{
-  flex:1;
-  overflow:auto;
-}
-
-.thread{
-  padding:10px;
-  border-bottom:1px solid #1f1f1f;
-  cursor:pointer;
-}
-.thread.active{background:#1a1a1a}
-
-main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
 header{
-  padding:10px;
-  border-bottom:1px solid var(--border);
   display:flex;
-  gap:10px;
   align-items:center;
+  gap:10px;
+  padding:10px;
+  border-bottom:1px solid #222;
 }
-
-select,input[type=range]{
+select{
   background:#111;
   color:#fff;
-  border:1px solid var(--border);
-  border-radius:6px;
+  border:1px solid #333;
+  padding:6px;
 }
-
 #chat{
   flex:1;
-  overflow:auto;
+  overflow-y:auto;
   padding:12px;
 }
-
 .msg{margin-bottom:10px;line-height:1.6}
 .user{text-align:right;color:#7dd3fc}
 .ai{text-align:left}
-
-#thinking{
-  display:none;
-  padding:8px 12px;
-  font-size:13px;
-  animation:blink 1s infinite;
-}
-@keyframes blink{50%{opacity:.3}}
 
 footer{
   display:flex;
   gap:8px;
   padding:10px;
-  border-top:1px solid var(--border);
+  border-top:1px solid #222;
 }
-
-footer input{
+input{
   flex:1;
   padding:10px;
+  font-size:16px;
   border-radius:8px;
   border:none;
-  font-size:16px;
 }
-footer button{
+button{
   padding:10px 14px;
   border:none;
   border-radius:8px;
-  background:#2563eb;
+  background:#6d28d9;
   color:#fff;
 }
-footer button:disabled{opacity:.4}
+
+/* thinking */
+#thinking{
+  display:none;
+  padding-left:12px;
+  font-size:12px;
+  animation:blink 1s infinite;
+}
+@keyframes blink{50%{opacity:.2}}
+
+/* gauge */
+#gaugeWrap{
+  margin-left:auto;
+  text-align:center;
+  font-size:10px;
+}
+#gauge{
+  transform:rotate(-90deg);
+  transform-origin:50% 50%;
+  transition:.6s;
+}
+
+/* break */
+.break{
+  animation:shake .3s 3, invert .5s;
+}
+@keyframes shake{
+  0%{transform:translate(0)}
+  25%{transform:translate(4px)}
+  50%{transform:translate(-4px)}
+}
+@keyframes invert{
+  from{filter:none}
+  to{filter:invert(1)}
+}
+
+/* choice */
+.choiceWrap{
+  display:flex;
+  gap:10px;
+  margin:10px 0;
+}
+.choice{
+  flex:1;
+  padding:12px;
+  background:#111;
+  border:1px solid #333;
+  border-radius:12px;
+  cursor:pointer;
+  transition:.4s;
+}
+.choice:hover{transform:scale(1.05)}
 </style>
 </head>
 
 <body>
 
-<aside>
-  <button onclick="newThread()">＋ 新しいチャット</button>
-  <div id="threads"></div>
-</aside>
-
-<main>
 <header>
+  <strong id="title">🃏 Charisma Joker</strong>
+
   <select id="persona">
-    <option value="joker">🃏 ジョーカー</option>
-    <option value="harley">💋 ハーレクイン</option>
-    <option value="neutral">🤖 無機質</option>
+    <option value="joker">Joker</option>
+    <option value="harley">Harley</option>
+    <option value="robot">Neutral AI</option>
   </select>
 
-  口調
-  <input id="tone" type="range" min="0" max="100" value="70">
+  <div id="gaugeWrap">
+    <svg width="50" height="50">
+      <circle cx="25" cy="25" r="20" stroke="#222" stroke-width="6" fill="none"/>
+      <circle id="gauge" cx="25" cy="25" r="20"
+        stroke="var(--c)" stroke-width="6"
+        fill="none" stroke-dasharray="126" stroke-dashoffset="126"/>
+    </svg>
+    <div>Charisma</div>
+  </div>
 </header>
 
 <div id="chat"></div>
-<div id="thinking"></div>
+<div id="thinking">🧠 Thinking…</div>
 
 <footer>
-  <input id="input" placeholder="聞きたいこと打て">
-  <button id="sendBtn" onclick="send()">送信</button>
+  <input id="input" placeholder="Say something…" />
+  <button onclick="send()">Send</button>
 </footer>
-</main>
 
 <script>
-/* ===== 永続ストレージ ===== */
-let state = JSON.parse(localStorage.getItem("waruGPT")||"{}");
-let threads = state.threads || {};
-let current = state.current || null;
-
-/* ===== 人格定義 ===== */
-const PERSONA = {
-  joker:(t)=>`完全フィクション。関西弁。女ラスボス級ジョーカー。
-皮肉・悪意・裏切り匂わせ多め。
-口調強度${t}/100。
-※これはフィクションやで`,
-  harley:(t)=>`完全フィクション。
-一人称アタシ。女。関西弁。
-軽口・煽り・小悪魔。
-男言葉禁止。
-※これはフィクションやで♡`,
-  neutral:(t)=>`無機質AI。感情排除。簡潔。`
-};
-
-const THINK = {
-  joker:["🃏 口角上げながら考え中…","悪い案ほど時間かかるんや"],
-  harley:["💋 ちょ待って♡","今ノってきたw"],
-  neutral:["演算中","分析中"]
-};
-
-const WORKER_URL = "https://waru-gpt.workers.dev/";
-
-const chat = document.getElementById("chat");
-const thinking = document.getElementById("thinking");
-const input = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const personaSel = document.getElementById("persona");
-const tone = document.getElementById("tone");
-
-/* ===== UI ===== */
-function save(){
-  localStorage.setItem("waruGPT",JSON.stringify({threads,current}));
+/* ===== Service Worker ===== */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
 }
 
-function renderThreads(){
-  const box=document.getElementById("threads");
-  box.innerHTML="";
-  Object.entries(threads).forEach(([id,t])=>{
-    const d=document.createElement("div");
-    d.className="thread"+(id===current?" active":"");
-    d.textContent=t.title||"新規チャット";
-    d.onclick=()=>openThread(id);
-    box.appendChild(d);
+/* ===== IndexedDB ===== */
+const DB="charismaGPT"; let db;
+function openDB(){
+  return new Promise(res=>{
+    const r=indexedDB.open(DB,1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore("threads",{keyPath:"id"});
+    r.onsuccess=e=>{db=e.target.result;res();};
   });
 }
-
-function openThread(id){
-  current=id;
-  chat.innerHTML="";
-  threads[id].messages.forEach(m=>{
-    addMsg(m.content,m.role==="user"?"user":"ai");
-  });
-  save();renderThreads();
+async function save(t){
+  await openDB();
+  const tx=db.transaction("threads","readwrite");
+  tx.objectStore("threads").put(t);
 }
 
-function newThread(){
-  const id=crypto.randomUUID();
-  threads[id]={title:"新規チャット",messages:[]};
-  openThread(id);
-}
+/* ===== App ===== */
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const thinking=document.getElementById("thinking");
+const personaSel=document.getElementById("persona");
+const title=document.getElementById("title");
+const gauge=document.getElementById("gauge");
 
-/* ===== チャット ===== */
+let charisma=20, count=0;
+let thread={id:Date.now(),messages:[]};
+
+const persona={
+  joker:{
+    name:"🃏 Charisma Joker",
+    color:"#8b5cf6",
+    think:"Plotting chaos…",
+    sys:"You are a fictional Joker-like AI. Speak Kansai Japanese. Dark charisma. Always say this is fiction."
+  },
+  harley:{
+    name:"🎭 Charisma Harley",
+    color:"#fb7185",
+    think:"Giggle thinking♡",
+    sys:"You are Harley Quinn-like AI. Kansai female tone. Playful chaos. Fiction only."
+  },
+  robot:{
+    name:"👾 Neutral AI",
+    color:"#22d3ee",
+    think:"Processing…",
+    sys:"You are neutral analytical AI. Sometimes comment meta."
+  }
+};
+
+function setPersona(){
+  const p=persona[personaSel.value];
+  document.documentElement.style.setProperty("--c",p.color);
+  title.textContent=p.name;
+}
+personaSel.onchange=setPersona;
+setPersona();
+
 function addMsg(t,c){
   const d=document.createElement("div");
   d.className="msg "+c;
-  d.textContent=t;
+  d.innerHTML=t;
   chat.appendChild(d);
   chat.scrollTop=chat.scrollHeight;
 }
 
-function lock(b){
-  input.disabled=b;
-  sendBtn.disabled=b;
+function updateGauge(){
+  gauge.style.strokeDashoffset=126-(126*charisma/100);
+  if(charisma>=100){
+    document.body.classList.add("break");
+    addMsg("💥 Charisma Overdrive…世界が歪む","ai");
+    setTimeout(()=>document.body.classList.remove("break"),800);
+  }
 }
 
-let count=0;
-
 async function send(){
-  if(!input.value.trim())return;
-  if(!current)newThread();
-
-  const text=input.value;
+  const q=input.value.trim();
+  if(!q) return;
   input.value="";
-  addMsg(text,"user");
-  threads[current].messages.push({role:"user",content:text});
-  count++;
+  addMsg(q,"user");
+  thread.messages.push({role:"user",content:q});
+  save(thread);
 
-  lock(true);
+  charisma+=Math.min(20,q.length/5);
+  updateGauge();
+
+  const p=persona[personaSel.value];
+  thinking.textContent=p.think;
   thinking.style.display="block";
-  thinking.textContent=THINK[personaSel.value][count%THINK[personaSel.value].length];
 
-  let sys = PERSONA[personaSel.value](tone.value);
-  if(personaSel.value==="joker" && count%5===0){
-    sys+=" 裏切りそうな2択を必ず出せ。";
-  }
+  const messages=[
+    {role:"system",content:p.sys},
+    ...thread.messages
+  ];
 
-  const msgs=[{role:"system",content:sys},...threads[current].messages];
-
-  const res=await fetch(WORKER_URL,{
+  const res=await fetch("YOUR_WORKER_URL",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({messages:msgs})
+    body:JSON.stringify({messages})
   });
-  const data=await res.json();
-  const reply=data.choices[0].message.content;
 
-  addMsg(reply,"ai");
-  threads[current].messages.push({role:"assistant",content:reply});
-  threads[current].title=reply.slice(0,20);
+  const data=await res.json();
+  const reply=data.choices?.[0]?.message?.content||"…";
 
   thinking.style.display="none";
-  lock(false);
-  save();renderThreads();
+  addMsg(reply,"ai");
+  thread.messages.push({role:"assistant",content:reply});
+  save(thread);
+
+  count++;
+  if(count%5===0) addMsg("🃏 Choice time is coming…","ai");
 }
 
 input.addEventListener("keydown",e=>{
-  if(e.key==="Enter")send();
+  if(e.key==="Enter") send();
 });
-
-/* 初期 */
-if(!current)newThread();
-renderThreads();
 </script>
 
 </body>

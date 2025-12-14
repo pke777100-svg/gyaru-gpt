@@ -6,15 +6,15 @@
 <title>Charisma GPT SMS</title>
 <style>
 :root{
-  --joker-bg:#0b0214;--harley-bg:#14020a;--third-bg:#1a1a0b;
-  --joker-accent:#7c3aed;--harley-accent:#ec4899;--third-accent:#facc15;
+  --joker-bg:#0b0214;--harley-bg:#14020a;--evil-bg:#1a0b1a;
+  --joker-accent:#7c3aed;--harley-accent:#ec4899;--evil-accent:#facc15;
 }
 body{margin:0;font-family:-apple-system;background:var(--joker-bg);color:#e5e7eb;transition:background .3s}
 #top{display:flex;gap:8px;padding:10px;overflow-x:auto;position:sticky;top:0;background:#000;z-index:10}
 .personaBtn{flex:0 0 auto;padding:10px 14px;border:none;border-radius:16px;color:#fff;font-weight:600;cursor:pointer}
 #jokerBtn{background:var(--joker-accent)}
 #harleyBtn{background:var(--harley-accent)}
-#thirdBtn{background:var(--third-accent);display:none}
+#evilBtn{background:var(--evil-accent);display:none}
 #chat{padding:12px;height:calc(100vh - 220px);overflow:auto;display:flex;flex-direction:column}
 .bubble{max-width:78%;padding:12px 14px;border-radius:18px;margin-bottom:10px;word-break:break-word;position:relative}
 .user{margin-left:auto;background:#2563eb}
@@ -33,11 +33,11 @@ canvas{width:100%;height:150px}
 <div id="top">
   <button id="jokerBtn" class="personaBtn">🃏 Joker</button>
   <button id="harleyBtn" class="personaBtn">💋 Harley</button>
-  <button id="thirdBtn" class="personaBtn">⚡ Evil Council</button>
+  <button id="evilBtn" class="personaBtn">⚡ Evil Mode</button>
 </div>
 
 <div id="chat"></div>
-<div id="thinking"><span class="typing">AI is typing...</span></div>
+<div id="thinking"><span class="typing">Charisma GPT is scheming…</span></div>
 <div id="psychTest"><canvas id="psychCanvas"></canvas></div>
 
 <div id="footer">
@@ -56,15 +56,16 @@ const input=document.getElementById("input");
 const thinking=document.getElementById("thinking");
 const jokerBtn=document.getElementById("jokerBtn");
 const harleyBtn=document.getElementById("harleyBtn");
-const thirdBtn=document.getElementById("thirdBtn");
-
-applyPersona();
-checkThirdBtn();
+const evilBtn=document.getElementById("evilBtn");
 
 jokerBtn.onclick=()=>switchPersona("joker");
 harleyBtn.onclick=()=>switchPersona("harley");
-thirdBtn.onclick=()=>switchPersona("third");
+evilBtn.onclick=()=>switchPersona("evil");
 
+applyPersona();
+checkEvilBtn();
+
+// --- 人格切替 ---
 function switchPersona(p){
   persona=p;
   localStorage.setItem("persona",p);
@@ -74,17 +75,20 @@ function switchPersona(p){
 function applyPersona(){
   if(persona==="joker") document.body.style.background="var(--joker-bg)";
   else if(persona==="harley") document.body.style.background="var(--harley-bg)";
-  else document.body.style.background="var(--third-bg)";
+  else document.body.style.background="var(--evil-bg)";
 }
 
-function checkThirdBtn(){if(score>=10) thirdBtn.style.display="inline-block"}
+// --- 悪モード表示 ---
+function checkEvilBtn(){if(score>=10) evilBtn.style.display="inline-block"}
 
-const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Dream whisper ${i+1}`);
+// --- ランダムワード1000種 ---
+const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Shadow whisper #${i+1}`);
 function showRandomPhrase(){
   const phrase=randomPhrases[Math.floor(Math.random()*randomPhrases.length)];
   add(phrase,"ai");
 }
 
+// --- チャット追加 ---
 function add(text,cls){
   const d=document.createElement("div");
   d.className="bubble "+cls;
@@ -93,11 +97,20 @@ function add(text,cls){
   chat.scrollTop=chat.scrollHeight;
 }
 
+// --- 思考中アニメ ---
 function thinkingEffect(){
   thinking.style.display="block";
   return setInterval(()=>{},50);
 }
 
+// --- 英語を自動日本語変換（簡易例） ---
+function translateToJapanese(text){
+  // 本格的には翻訳APIだが簡易変換例
+  if(/[a-zA-Z]/.test(text)) return "（英語を日本語に変換） "+text;
+  return text;
+}
+
+// --- 送信 ---
 async function send(){
   const text=input.value.trim();
   if(!text)return;
@@ -119,11 +132,12 @@ async function send(){
     const data=await res.json();
     clearInterval(interval);
     thinking.style.display="none";
-    add(data.reply,"ai");
-    memory.push({role:"assistant",content:data.reply});
+    let reply=translateToJapanese(data.reply);
+    add(reply,"ai");
+    memory.push({role:"assistant",content:reply});
     score++;
     save();
-    checkThirdBtn();
+    checkEvilBtn();
     if(score>=20) showPsychTest();
   }catch{
     clearInterval(interval);
@@ -132,12 +146,14 @@ async function send(){
   }
 }
 
+// --- 永続保存 ---
 function save(){
   localStorage.setItem("charismaMemory",JSON.stringify(memory));
   localStorage.setItem("charismaScore",score);
   localStorage.setItem("persona",persona);
 }
 
+// --- 心理テスト円グラフ ---
 function showPsychTest(){
   const canvas=document.getElementById("psychCanvas");
   document.getElementById("psychTest").style.display="block";
@@ -155,6 +171,14 @@ function showPsychTest(){
     start+=2*Math.PI*(v/100);
   });
 }
+
+// --- Charisma GPT心理学ベースアドバイス3つ ---
+const charismaAdvices=[
+  "結論を7割で止める → 余白があるほどユーザーは戻る",
+  "記憶は迷いを優先して覚える → 理解される感覚を与える",
+  "常に一歩先の視点を提示して去る → 続きが気になり、自然に戻る"
+];
+
 </script>
 </body>
 </html>

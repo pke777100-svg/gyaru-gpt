@@ -17,8 +17,11 @@ html,body{height:100%;overflow:hidden}
 .persona-btn{padding:4px 8px;margin-left:4px;border-radius:8px;border:none;cursor:pointer;font-size:12px}
 #threads{position:fixed;inset:0;background:#111;z-index:10;display:none;flex-direction:column}
 #threads header{padding:14px;font-weight:700;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center}
-.thread{padding:14px;border-bottom:1px solid #333;cursor:pointer}
+.thread{padding:14px;border-bottom:1px solid #333;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
 .thread.active{background:#222}
+.thread-title{flex:1;cursor:text;}
+.thread-actions{display:flex;gap:4px}
+.thread button{background:#444;color:#fff;border:none;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:12px}
 #chat{flex:1;padding:12px;overflow-y:auto;position:relative}
 .bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;word-break:break-word;}
 .user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
@@ -32,6 +35,9 @@ button.send:disabled{opacity:.5;cursor:not-allowed;}
 #scorePanel{position:absolute;top:60px;right:10px;background:#222;padding:10px;border-radius:12px;font-size:12px;opacity:0.8;}
 .choice-container{display:flex;gap:8px;margin:6px 0;}
 .choice-btn{background:#ff0000;color:#fff;border-radius:12px;border:none;padding:6px 12px;cursor:pointer;}
+#confirmDelete{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#111;padding:20px;border:2px solid #f00;border-radius:12px;z-index:30;}
+#confirmDelete input{margin-right:6px;}
+#confirmDelete button{margin-left:6px;padding:4px 8px;border:none;border-radius:6px;background:#f00;color:#fff;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -60,12 +66,19 @@ button.send:disabled{opacity:.5;cursor:not-allowed;}
   <div id="threadList"></div>
 </div>
 
+<div id="confirmDelete">
+  <label><input type="checkbox" id="skipConfirm"/> Don't show again</label>
+  <button id="deleteYes">Delete</button>
+  <button id="deleteNo">Cancel</button>
+</div>
+
 <audio id="levelUpSound" src="levelup.mp3" preload="auto"></audio>
 
 <script>
 const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
 let threads=JSON.parse(localStorage.getItem("charismaThreads")||"{}");
 let current=null;
+let skipConfirm=false;
 const chat=document.getElementById("chat");
 const input=document.getElementById("input");
 const thinking=document.getElementById("thinking");
@@ -75,11 +88,16 @@ const personaLabel=document.getElementById("personaLabel");
 const scorePanel=document.getElementById("scorePanel");
 const sendBtn=document.getElementById("sendBtn");
 const levelUpSound=document.getElementById("levelUpSound");
+const confirmDelete=document.getElementById("confirmDelete");
+const skipCheckbox=document.getElementById("skipConfirm");
+const deleteYes=document.getElementById("deleteYes");
+const deleteNo=document.getElementById("deleteNo");
 
-// sample 500 lines
-const jokerLines=[];for(let i=0;i<500;i++){jokerLines.push(`Joker line #${i+1}`);}
-const harleyLines=[];for(let i=0;i<500;i++){harleyLines.push(`Harley line #${i+1}`);}
-const aiLines=[];for(let i=0;i<500;i++){aiLines.push(`AI line #${i+1}`);}
+// 台詞サンプル500種
+const jokerLines=[],harleyLines=[],aiLines=[];
+for(let i=0;i<500;i++){jokerLines.push(`Joker line #${i+1}`);}
+for(let i=0;i<500;i++){harleyLines.push(`Harley line #${i+1}`);}
+for(let i=0;i<500;i++){aiLines.push(`AI line #${i+1}`);}
 
 function save(){localStorage.setItem("charismaThreads",JSON.stringify(threads));}
 function addBubble(text,cls){const d=document.createElement("div");d.className="bubble "+cls;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
@@ -96,23 +114,38 @@ function showChoice(options,callback){
   chat.appendChild(container);chat.scrollTop=chat.scrollHeight;
 }
 
-// threads
 function newThread(persona="joker"){
   const id=Date.now().toString();
   threads[id]={title:"New Chat",persona,messages:[{role:"system",content:persona==="harley"?"Harley Quinn Evil":"Joker Evil"}],score:0};
   current=id;save();renderThreads();renderChat();
 }
+
 function renderThreads(){
   list.innerHTML="";
   Object.keys(threads).forEach(id=>{
     const t=threads[id];
     const d=document.createElement("div");
     d.className="thread"+(id===current?" active":"");
-    d.textContent=t.title;
-    d.onclick=()=>{current=id;closeThreads();renderChat();}
+    const title=document.createElement("input");
+    title.value=t.title;
+    title.className="thread-title";
+    title.onchange=()=>{t.title=title.value;save();renderThreads();}
+    const actions=document.createElement("div");actions.className="thread-actions";
+    const delBtn=document.createElement("button");delBtn.textContent="×";
+    delBtn.onclick=()=>{
+      if(!skipConfirm){
+        confirmDelete.style.display="block";
+        deleteYes.onclick=()=>{delete threads[id];current=null;confirmDelete.style.display="none";skipConfirm=skipCheckbox.checked;save();renderThreads();renderChat();}
+        deleteNo.onclick=()=>{confirmDelete.style.display="none";}
+      }else{delete threads[id];current=null;save();renderThreads();renderChat();}
+    };
+    actions.appendChild(delBtn);
+    d.appendChild(title);d.appendChild(actions);
+    d.onclick=e=>{if(e.target.tagName!=="INPUT" && e.target.tagName!=="BUTTON"){current=id;closeThreads();renderChat();}};
     list.appendChild(d);
   });
 }
+
 function renderChat(){
   chat.innerHTML="";
   if(!current)return;
@@ -122,29 +155,21 @@ function renderChat(){
   updateScore();
 }
 
-// send
 async function sendMessage(){
   const text=input.value.trim();if(!text||!current)return;
   input.value="";input.disabled=true;sendBtn.disabled=true;addBubble(text,"user");
   const t=threads[current];t.messages.push({role:"user",content:text});save();
   thinking.style.display="block";
   try{
-    const res=await fetch(WORKER_URL,{
-      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:t.messages})
-    });
+    const res=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:t.messages})});
     const data=await res.json();
     const reply=data.reply||randomReply(t.persona);
     t.messages.push({role:"assistant",content:reply});addBubble(reply,"ai");
     t.title=text.slice(0,16);save();renderThreads();
-    // random score update
     t.score=(t.score||0)+Math.floor(Math.random()*5);updateScore();
-    if(Math.random()<0.2)playLevelUp(); // 20% chance level up sound
-    // 5回に1回選択肢表示
-    if(Math.random()<0.2)showChoice(["Option A","Option B"],opt=>{
-      addBubble("You chose: "+opt,"ai");
-      t.score+=(opt==="Option A"?5:2);updateScore();
-    });
-  }catch(e){addBubble("Worker error…","ai");}
+    if(Math.random()<0.2)playLevelUp();
+    if(Math.random()<0.2)showChoice(["Option A","Option B"],opt=>{addBubble("You chose: "+opt,"ai");t.score+=(opt==="Option A"?5:2);updateScore();});
+  }catch(e){addBubble("Worker error… using random reply","ai");t.messages.push({role:"assistant",content:randomReply(t.persona)});}
   thinking.style.display="none";input.disabled=false;sendBtn.disabled=false;
 }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -44,13 +44,13 @@ button.sendBtn:hover{background:#1e40af}
 
   <div id="chat"></div>
   <footer>
-    <input id="input" placeholder="メッセージ…" />
+    <input id="input" placeholder="Message…" />
     <button class="sendBtn">↑</button>
   </footer>
 </div>
 
 <div id="threads">
-  <header>チャット</header>
+  <header>Chats</header>
   <div id="threadList"></div>
 </div>
 
@@ -80,11 +80,10 @@ function newThread(persona){
     messages:[
       {role:"system",content:
         persona==="harley"
-        ?"完全フィクション。関西弁。女のハーレクイン。軽く煽る。"
+        ?"Completely fictional. Playful, teasing tone."
         :persona==="mad"
-        ?"完全フィクション。科学狂人。論理的に奇抜なアイデア。"
-        :"完全フィクション。関西弁。悪のジョーカー。皮肉とブラックユーモア。"
-      }
+        ?"Completely fictional. Logical, creative, slightly insane."
+        :"Completely fictional. Sarcastic & black humor."}
     ]
   };
   current=id; save(); renderThreads(); renderChat();
@@ -105,7 +104,7 @@ function renderThreads(){
 function renderChat(){
   chat.innerHTML="";
   const t=threads[current];
-  personaLabel.textContent=t.persona==="harley"?"💋 Harley":t.persona==="mad"?"🧪 MadSci":"🃏 Joker";
+  personaLabel.textContent=t.persona==="harley"?"💋 Harley":t.persona==="mad"?"🧪 AI":"🃏 Joker";
   t.messages.forEach(m=>{
     if(m.role==="user") add(m.content,"user");
     if(m.role==="assistant"){
@@ -129,22 +128,21 @@ async function send(){
 
   const thinkingBubble=document.createElement("div");
   thinkingBubble.className="bubble ai";
-  thinkingBubble.textContent="🧠 考え中…";
+  thinkingBubble.textContent="🧠 Thinking...";
   chat.appendChild(thinkingBubble);
   chat.scrollTop=chat.scrollHeight;
   shake(2);
 
   sendCount++;
   try{
-    // 5回に1回 2択イベント
     if(sendCount%5===0){
       chat.removeChild(thinkingBubble);
       const choiceDiv=document.createElement("div");
       choiceDiv.className="twochoice";
       const optionA=document.createElement("button");
-      optionA.textContent="A (怪しい方)";optionA.onclick=()=>{add("あなたはAを選んだ…騙されたかも","ai");chat.removeChild(choiceDiv);}
+      optionA.textContent="A (Tricky)";optionA.onclick=()=>{add("You chose A… maybe tricked!","ai");chat.removeChild(choiceDiv);}
       const optionB=document.createElement("button");
-      optionB.textContent="B (安全な方)";optionB.onclick=()=>{add("あなたはBを選んだ…安全だった","ai");chat.removeChild(choiceDiv);}
+      optionB.textContent="B (Safe)";optionB.onclick=()=>{add("You chose B… safe!","ai");chat.removeChild(choiceDiv);}
       choiceDiv.appendChild(optionA);
       choiceDiv.appendChild(optionB);
       chat.appendChild(choiceDiv);
@@ -158,14 +156,14 @@ async function send(){
       body:JSON.stringify({messages:t.messages})
     });
     const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content || data.reply || "(通信エラー)";
+    const reply=data.choices?.[0]?.message?.content || data.reply || "(Communication error)";
     t.messages.push({role:"assistant",content:reply});
     chat.removeChild(thinkingBubble);
     add(reply,"ai "+(t.persona==="harley"?"harley":t.persona==="mad"?"madsci":"joker"));
     save();
   }catch(e){
     chat.removeChild(thinkingBubble);
-    add("(通信エラー)","ai");
+    add("(Communication error)","ai");
   }
 
   renderThreads();

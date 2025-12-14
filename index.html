@@ -65,7 +65,6 @@ evilBtn.onclick=()=>switchPersona("evil");
 applyPersona();
 checkEvilBtn();
 
-// --- 人格切替 ---
 function switchPersona(p){
   persona=p;
   localStorage.setItem("persona",p);
@@ -78,17 +77,14 @@ function applyPersona(){
   else document.body.style.background="var(--evil-bg)";
 }
 
-// --- 悪モード表示 ---
 function checkEvilBtn(){if(score>=10) evilBtn.style.display="inline-block"}
 
-// --- ランダムワード1000種 ---
 const randomPhrases=new Array(1000).fill(0).map((_,i)=>`Shadow whisper #${i+1}`);
 function showRandomPhrase(){
   const phrase=randomPhrases[Math.floor(Math.random()*randomPhrases.length)];
   add(phrase,"ai");
 }
 
-// --- チャット追加 ---
 function add(text,cls){
   const d=document.createElement("div");
   d.className="bubble "+cls;
@@ -97,20 +93,16 @@ function add(text,cls){
   chat.scrollTop=chat.scrollHeight;
 }
 
-// --- 思考中アニメ ---
 function thinkingEffect(){
   thinking.style.display="block";
   return setInterval(()=>{},50);
 }
 
-// --- 英語を自動日本語変換（簡易例） ---
 function translateToJapanese(text){
-  // 本格的には翻訳APIだが簡易変換例
   if(/[a-zA-Z]/.test(text)) return "（英語を日本語に変換） "+text;
   return text;
 }
 
-// --- 送信 ---
 async function send(){
   const text=input.value.trim();
   if(!text)return;
@@ -146,14 +138,12 @@ async function send(){
   }
 }
 
-// --- 永続保存 ---
 function save(){
   localStorage.setItem("charismaMemory",JSON.stringify(memory));
   localStorage.setItem("charismaScore",score);
   localStorage.setItem("persona",persona);
 }
 
-// --- 心理テスト円グラフ ---
 function showPsychTest(){
   const canvas=document.getElementById("psychCanvas");
   document.getElementById("psychTest").style.display="block";
@@ -172,13 +162,11 @@ function showPsychTest(){
   });
 }
 
-// --- Charisma GPT心理学ベースアドバイス3つ ---
 const charismaAdvices=[
   "結論を7割で止める → 余白があるほどユーザーは戻る",
   "記憶は迷いを優先して覚える → 理解される感覚を与える",
   "常に一歩先の視点を提示して去る → 続きが気になり、自然に戻る"
 ];
-
 </script>
 </body>
 </html>

@@ -3,29 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charisma GPT Safe</title>
+<title>Charisma GPT Safe v1.1</title>
 <style>
-body{margin:0;font-family:-apple-system;background:#000;color:#e5e7eb;}
-#app{display:flex;flex-direction:column;height:100vh;}
+body{margin:0;font-family:-apple-system;background:#000;color:#e5e7eb;height:100vh;display:flex;flex-direction:column;}
 #chat{flex:1;overflow-y:auto;padding:12px;}
 .bubble{max-width:78%;padding:10px 14px;margin-bottom:8px;border-radius:18px;line-height:1.4;}
 .user{margin-left:auto;background:#2563eb;color:#fff;}
 .ai{background:#1f2937;border-left:2px solid #4f46e5;}
-#thinking{display:none;font-size:12px;margin:10px;}
-footer{display:flex;padding:10px;background:#111;gap:8px;}
+#thinking{display:none;font-size:12px;margin:10px;animation:blink 1s step-start infinite;}
+@keyframes blink{50%{opacity:0;}}
+footer{display:flex;padding:10px;background:#111;gap:8px;align-items:center;}
 input{flex:1;padding:12px;border-radius:18px;border:none;outline:none;font-size:16px;}
 button{padding:10px 14px;border-radius:18px;border:none;background:#2563eb;color:#fff;cursor:pointer;}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="chat"></div>
-  <div id="thinking">🧠 Thinking...</div>
-  <footer>
-    <input id="input" placeholder="Message..." />
-    <button id="sendBtn">➤</button>
-  </footer>
-</div>
+<div id="chat"></div>
+<div id="thinking">🧠 Thinking...</div>
+<footer>
+  <input id="input" placeholder="Message..." />
+  <button id="sendBtn">➤</button>
+</footer>
+
 <script>
 const WORKER_URL="https://frosty-shadow-3411.pke777100.workers.dev";
 let messages=JSON.parse(localStorage.getItem("charismaMsgs")||"[]");
@@ -66,15 +65,16 @@ async function sendMessage(){
     const reply=data.reply||"…夢が途切れた。手は残っている。";
     messages.push({role:"ai",content:reply});
     addBubble(reply,"ai");
-    localStorage.setItem("charismaMsgs",JSON.stringify(messages));
   }catch(err){
     console.error("Worker Error:",err);
     const fallback="⚠️ Worker error: "+err.message;
     messages.push({role:"ai",content:fallback});
     addBubble(fallback,"ai");
-    localStorage.setItem("charismaMsgs",JSON.stringify(messages));
   }finally{
+    localStorage.setItem("charismaMsgs",JSON.stringify(messages));
     thinkingEl.style.display="none";
+    inputEl.disabled=false;
+    inputEl.focus();
   }
 }
 

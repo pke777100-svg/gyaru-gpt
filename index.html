@@ -124,7 +124,7 @@ function renderThreads(){
     delBtn.onclick=(e)=>{e.stopPropagation();delete threads[id];if(current===id){current=Object.keys(threads)[0]||null}save();renderThreads();if(current)renderChat();}
     d.appendChild(delBtn);
 
-    d.onclick=()=>{if(current!==id){current=id;closeThreads();shake(10);renderChat();}};
+    d.onclick=()=>{if(current!==id){current=id;closeThreads();shake(10);renderChat(); updatePersonaButtons();}};
     list.appendChild(d);
   });
 }
@@ -143,6 +143,14 @@ function renderChat(){
   });
 }
 
+function updatePersonaButtons(){
+  if(!current) return;
+  const persona = threads[current].persona;
+  personaButtons.forEach(btn=>{
+    btn.disabled = (btn.dataset.persona === persona);
+  });
+}
+
 document.getElementById("back").onclick=()=>{document.getElementById("threads").style.display="flex";}
 function closeThreads(){document.getElementById("threads").style.display="none";}
 
@@ -151,7 +159,7 @@ personaButtons.forEach(btn=>{
     if(!current) return;
     threads[current].persona=btn.dataset.persona;
     shake(8);
-    save(); renderChat();
+    save(); renderChat(); updatePersonaButtons();
   };
 });
 
@@ -215,6 +223,7 @@ async function send(){
 
   renderThreads();
   input.disabled=false;
+  updatePersonaButtons();
 }
 
 sendBtn.onclick=send;
@@ -226,7 +235,7 @@ if(Object.keys(threads).length===0){
   newThread("mad");
 }else{
   current=Object.keys(threads)[0];
-  renderThreads(); renderChat();
+  renderThreads(); renderChat(); updatePersonaButtons();
 }
 </script>
 </body>

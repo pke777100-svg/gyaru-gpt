@@ -15,8 +15,9 @@ html,body{height:100%;}
 #to small{font-size:11px;opacity:.6}
 #threads{position:fixed;inset:0;background:#020617;z-index:20;display:none;flex-direction:column}
 #threads header{padding:14px;font-weight:700;border-bottom:1px solid #1e293b}
-.thread{padding:14px;border-bottom:1px solid #1e293b;cursor:pointer;touch-action:none}
+.thread{padding:14px;border-bottom:1px solid #1e293b;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:none}
 .thread.active{background:#1e1b4b}
+.thread button{background:none;border:none;color:#f00;font-weight:700;cursor:pointer;font-size:14px}
 #chat{flex:1;padding:12px;overflow-y:auto;position:relative}
 .bubble{max-width:78%;padding:12px 14px;margin-bottom:10px;border-radius:18px;line-height:1.5;word-break:break-word;transition:transform .15s}
 .user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:6px}
@@ -30,6 +31,7 @@ button.sendBtn:hover{background:#1e40af}
 .joker{background:#7c3aed;color:#fff}
 .harley{background:#ec4899;color:#fff}
 .madsci{background:#10b981;color:#000}
+.editTitle{flex:1;background:#111;color:#fff;border:none;border-radius:6px;padding:2px 6px;margin-right:6px}
 </style>
 </head>
 <body>
@@ -75,7 +77,7 @@ function shake(speed=5){app.style.transform=`translate(${Math.random()*speed-0.5
 function newThread(persona){
   const id=Date.now().toString();
   threads[id]={
-    title:persona,
+    title:persona.charAt(0).toUpperCase()+persona.slice(1),
     persona,
     messages:[
       {role:"system",content:
@@ -95,21 +97,33 @@ function renderThreads(){
     const t=threads[id];
     const d=document.createElement("div");
     d.className="thread"+(id===current?" active":"");
-    d.textContent=t.title;
-    d.onclick=()=>{current=id;closeThreads();shake(10);renderChat();}
+
+    const titleInput=document.createElement("input");
+    titleInput.className="editTitle";
+    titleInput.value=t.title;
+    titleInput.onchange=()=>{t.title=titleInput.value;save();renderThreads();}
+    d.appendChild(titleInput);
+
+    const delBtn=document.createElement("button");
+    delBtn.textContent="×";
+    delBtn.onclick=(e)=>{e.stopPropagation();delete threads[id];if(current===id){current=Object.keys(threads)[0]||null}save();renderThreads();if(current)renderChat();}
+    d.appendChild(delBtn);
+
+    d.onclick=()=>{if(current!==id){current=id;closeThreads();shake(10);renderChat();}};
     list.appendChild(d);
   });
 }
 
 function renderChat(){
   chat.innerHTML="";
+  if(!current) return;
   const t=threads[current];
   personaLabel.textContent=t.persona==="harley"?"💋 Harley":t.persona==="mad"?"🧪 AI":"🃏 Joker";
   t.messages.forEach(m=>{
     if(m.role==="user") add(m.content,"user");
     if(m.role==="assistant"){
       const cls=t.persona==="harley"?"harley":t.persona==="mad"?"madsci":"joker";
-      add(m.content+"","ai "+cls);
+      add(m.content,"ai "+cls);
     }
   });
 }
@@ -118,6 +132,7 @@ document.getElementById("back").onclick=()=>{document.getElementById("threads").
 function closeThreads(){document.getElementById("threads").style.display="none";}
 
 async function send(){
+  if(!current) return;
   const text=input.value.trim();
   if(!text) return;
   input.value=""; input.disabled=true;
@@ -150,11 +165,15 @@ async function send(){
       return;
     }
 
+    const controller = new AbortController();
+    setTimeout(()=>controller.abort(),15000);
     const res=await fetch(WORKER_URL,{
       method:"POST",
       headers:{"Content-Type":"application/json; charset=utf-8"},
-      body:JSON.stringify({messages:t.messages})
+      body:JSON.stringify({messages:t.messages}),
+      signal: controller.signal
     });
+
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content || data.reply || "(Communication error)";
     t.messages.push({role:"assistant",content:reply});

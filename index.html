@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Charisma GPT – evil</title>
 <style>
@@ -83,6 +83,13 @@ function typing(){
 
 async function send(msg){
   if(!msg.trim())return;
+  
+  // フロント即答パターン
+  if(msg.includes("今日の運勢")){
+    add("今日の運勢: ★★★☆☆ 普通。自分次第で好転する。",'ai');
+    t.value=''; return;
+  }
+
   add(msg,'me'); turn++;
   const tp=typing();
   try{
@@ -96,8 +103,9 @@ async function send(msg){
     add(j.reply,`ai ${persona==='joker'?'joker':'harley'}`);
   }catch(e){
     tp.remove();
-    add("…夢が途切れた。手は残っている。",'ai');
+    add("…夢が途切れた。だが手は残ってる。",'ai');
   }
+  t.value='';
 }
 
 document.querySelector('button.send').onclick=()=>{send(t.value); t.value='';};
@@ -105,9 +113,7 @@ t.addEventListener('keydown',e=>{if(e.key==='Enter'){send(t.value); t.value='';}
 
 meta("悪い奴ほど賢い。— Joker");
 // アドバイス3つ
-meta("1. 沈黙を価値にする");
-meta("2. 断言せず選択肢で終える");
-meta("3. 的中後に理由を明かす");
+meta("おやおや、久しい顔だね");
 </script>
 </body>
 </html>

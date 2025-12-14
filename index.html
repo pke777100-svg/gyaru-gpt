@@ -6,203 +6,175 @@
 <title>waru GPT</title>
 <style>
 :root{
-  --bg:#f7f7f8; --chat:#fff; --user:#dcf8c6; --joker:#ffe6e6; --harley:#ffe0f0;
+ --bg:#f7f7f8; --user:#dcf8c6; --typing:#2196f3;
+ --joker-bg:#fff8e1; --harley-bg:#ffe4ec;
+ --joker-ai:#ffeb3b; --harley-ai:#ff4081;
+ --joker-title:#ffeb3b; --harley-title:#ff4081;
 }
-body{margin:0;font-family:-apple-system;background:var(--bg);height:100svh;overflow:hidden;}
-.app{display:flex;height:100%;}
-.side{
-  position:fixed;top:0;left:0;width:260px;height:100%;
-  background:#202123;color:#fff;z-index:20;
-  transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column;
+body{
+ margin:0;font-family:-apple-system;background:var(--bg);height:100vh;overflow:hidden
 }
-.side.open{transform:translateX(0);}
-.side h1{font-size:14px;margin:10px;}
-.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px;}
-.list{flex:1;overflow:auto;}
-.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer;}
-.item.active{background:#2a2b32;}
-.item span.title{flex:1;}
-.more{padding:4px 8px;font-size:20px;color:#aaa;}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10;}
-.overlay.show{display:block;}
-.main{flex:1;display:flex;flex-direction:column;}
-.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px;}
-.chat{flex:1;overflow:auto;padding:12px;}
-.msg{display:flex;margin:8px 0;}
-.msg.user{justify-content:flex-end;}
-.bubble{max-width:70%;padding:10px;border-radius:10px;white-space:pre-wrap;}
-.msg.user .bubble{background:var(--user);}
-.msg.ai .bubble{background:var(--chat);border:1px solid #ddd;}
-.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;flex-direction:column;}
-.controls textarea{width:100%;font-size:16px;margin-bottom:6px;}
-img.gen{max-width:70%;border-radius:10px;}
-.menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px;}
-.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px;}
-.sliderBox{display:flex;gap:4px;margin:4px 0;align-items:center;}
-.sliderBox input{flex:1;}
-.longPressMenu{position:absolute;background:#fff;border:1px solid #ccc;border-radius:6px;padding:6px;display:none;z-index:50;}
-.longPressMenu button{display:block;width:100%;margin:2px 0;}
+.app{display:flex;height:100%}
+
+/* スレッドタイトル */
+.thread-title{
+ padding:8px 12px;margin:0 4px;border-radius:8px;color:#000;font-weight:bold;
+ display:inline-block
+}
+
+/* チャット */
+.chat{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column-reverse}
+.msg{display:flex;margin:4px 0}
+.msg.user{justify-content:flex-end}
+.bubble{padding:8px;border-radius:12px;max-width:70%;white-space:pre-wrap;position:relative}
+.user{background:var(--user)}
+.ai.joker{background:var(--joker-bg);border:1px solid var(--joker-ai)}
+.ai.harley{background:var(--harley-bg);border:1px solid var(--harley-ai)}
+.typing{color:var(--typing);animation:blink 1s infinite}
+@keyframes blink{0%,50%,100%{opacity:1}25%,75%{opacity:0}}
+.controls{padding:10px;background:#fff;display:flex;flex-direction:column;gap:4px}
+textarea{width:100%;font-size:16px;resize:none}
+input[type=range]{width:100%}
+.menu{display:flex;gap:4px;margin:4px 0}
+.menu button{flex:1;padding:6px;font-size:14px}
+.copyBtn, .quoteBtn{position:absolute;top:4px;right:4px;margin-left:4px;font-size:12px;padding:2px 4px;cursor:pointer}
+img.gen{max-width:70%;border-radius:10px;margin-top:4px}
 </style>
 </head>
 <body>
-<div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
-<div class="side" id="side">
-  <h1>waru GPT</h1>
-  <input placeholder="検索" oninput="render(this.value)">
-  <button onclick="newThread('joker')">🃏 ジョーカー</button>
-  <button onclick="newThread('harley')">💋 ハーレクイン</button>
-  <button onclick="newThread('ai')">🤖 無機質AI</button>
-  <div class="list" id="threads"></div>
-  <button onclick="share()">🔗 共有URL</button>
+
+<div class="menu">
+ <button onclick="setPersona('joker')">🃏ジョーカー</button>
+ <button onclick="setPersona('harley')">💋ハーレクイン</button>
+ <button onclick="newThread()">➕新スレッド</button>
 </div>
-<div class="app">
-  <div class="main">
-    <div class="top"><span onclick="toggleSide()">☰</span><b>Chat</b></div>
-    <div class="chat" id="chat"></div>
-    <div class="controls">
-      <div class="sliderBox">
-        <label>毒舌度</label>
-        <input type="range" id="toxic" min="0" max="100" value="50">
-      </div>
-      <div class="sliderBox">
-        <label>狂気度</label>
-        <input type="range" id="mad" min="0" max="100" value="50">
-      </div>
-      <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
-      <div style="display:flex;gap:4px;">
-        <button onclick="send()">送信</button>
-        <button onclick="gen()">🎨画像生成</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="menuBox" id="menu">
-  <button onclick="renameThread()">✏️ 名前変更</button>
-  <button onclick="deleteThread()">🗑 削除</button>
-  <button onclick="closeMenu()">❌ キャンセル</button>
+
+<div id="threadList"></div>
+
+<div class="chat" id="chat"></div>
+
+<div class="controls">
+ <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+ <div>毒舌度: <input type="range" id="toxic" min="0" max="100"></div>
+ <div>狂気度: <input type="range" id="mad" min="0" max="100"></div>
+ <input type="file" id="img" accept="image/*">
+ <button onclick="send()">送信</button>
+ <button onclick="genImage()">🎨 画像生成</button>
 </div>
 
 <script>
 const API="https://empty-night-6ba3.pke777100.workers.dev";
-const side=document.getElementById("side");
-const ov=document.getElementById("ov");
-const threadsDiv=document.getElementById("threads");
 const chat=document.getElementById("chat");
 const q=document.getElementById("q");
-const menu=document.getElementById("menu");
 const toxic=document.getElementById("toxic");
 const mad=document.getElementById("mad");
+const imgInput=document.getElementById("img");
+const threadList=document.getElementById("threadList");
+
 let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
-let cur=localStorage.getItem("CUR");
-let menuId=null;
+let cur=localStorage.getItem("CUR")||null;
 
-/* UI */
-function toggleSide(v){
- const o=v!==undefined?v:!side.classList.contains("open");
- side.classList.toggle("open",o); ov.classList.toggle("show",o);
-}
+if(!threads.length) newThread();
+else loadThread(cur);
 
-/* Data */
-function save(){localStorage.setItem("THREADS",JSON.stringify(threads)); localStorage.setItem("CUR",cur);}
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur);}
+function setPersona(p){const t=threads.find(x=>x.id===cur);if(!t)return;t.persona=p;save();render();}
+function newThread(){const id="t"+Date.now();threads.unshift({id,title:"新しいスレッド",persona:"joker",toxic:50,mad:50,his:[]});cur=id;save();loadThread(cur);}
+function loadThread(id){cur=id;const t=threads.find(x=>x.id===cur);if(!t)return;toxic.value=t.toxic;mad.value=t.mad;render();}
 
-/* Threads */
-function newThread(p){
-  const id="t"+Date.now();
-  threads.unshift({id,title:"New chat",p,his:[],toxic:50,mad:50});
-  cur=id;save();render();toggleSide(false);
-}
-function openMenu(e,id){e.stopPropagation(); menuId=id; menu.style.display="block"; ov.classList.add("show");}
-function closeMenu(){menu.style.display="none"; menuId=null; ov.classList.remove("show");}
-function renameThread(){const t=threads.find(x=>x.id===menuId); if(!t)return; const n=prompt("スレッド名",t.title); if(n){t.title=n;save();render();} closeMenu();}
-function deleteThread(){threads=threads.filter(x=>x.id!==menuId); if(cur===menuId)cur=threads[0]?.id||null; save();render();closeMenu();}
-
-/* Render */
-function render(f=""){
- threadsDiv.innerHTML="";
- threads.filter(t=>t.title.includes(f)).forEach(t=>{
-   const d=document.createElement("div");
-   d.className="item"+(t.id===cur?" active":"");
-   d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
-   d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
-   d.querySelector(".more").onclick=e=>openMenu(e,t.id);
-   threadsDiv.appendChild(d);
+function renderThreads(){
+ threadList.innerHTML="";
+ threads.forEach(t=>{
+  const div=document.createElement("div");
+  div.className="thread-title";
+  div.style.backgroundColor=t.persona==="joker"? "var(--joker-title)":"var(--harley-title)";
+  div.textContent=t.title;
+  div.onclick=()=>loadThread(t.id);
+  threadList.appendChild(div);
  });
+}
+
+function render(){
+ renderThreads();
  chat.innerHTML="";
- const t=threads.find(x=>x.id===cur); if(!t)return;
- toxic.value=t.toxic; mad.value=t.mad;
- t.his.forEach(m=>{
-   const div=document.createElement("div");
-   div.className="msg "+m.role;
-   const bubble=document.createElement("div");
-   bubble.className="bubble"; bubble.textContent=m.content;
-   div.appendChild(bubble);
-   chat.appendChild(div);
- });
- chat.scrollTop=1e9;
+ const t=threads.find(x=>x.id===cur);
+ if(!t) return;
+ for(let i=t.his.length-1;i>=0;i--){
+  const m=t.his[i];
+  const div=document.createElement("div");
+  div.className=m.role==="user"?"msg user":"msg ai "+m.persona;
+  const b=document.createElement("div");
+  b.className="bubble";
+  b.textContent=m.content;
+  if(m.role==="ai" && m.typing) b.classList.add("typing");
+  div.appendChild(b);
+  if(m.role==="ai" && !m.img){
+   const copyBtn=document.createElement("button");
+   copyBtn.className="copyBtn";copyBtn.textContent="コピー";copyBtn.onclick=()=>navigator.clipboard.writeText(m.content);
+   const quoteBtn=document.createElement("button");quoteBtn.className="quoteBtn";quoteBtn.textContent="引用";quoteBtn.onclick=()=>{ q.value="> "+m.content+"\n"+q.value; };
+   div.appendChild(copyBtn);div.appendChild(quoteBtn);
+  }
+  if(m.img){
+   const im=document.createElement("img");
+   im.src=m.img;im.className="gen";div.appendChild(im);
+  }
+  chat.appendChild(div);
+ }
+ chat.scrollTop=chat.scrollHeight;
 }
 
-/* Persona */
-function persona(p){
- if(p==="joker") return "🃏ジョーカー";
- if(p==="harley") return "💋ハーレクイン";
- return "🤖無機質AI";
-}
-
-/* System Prompt */
-function systemPrompt(toxicVal,madVal,p){
+function systemPrompt(tox,mad,persona){
  return `
 完全フィクションの脳内🧠世界。
-${persona(p)}人格固定。
+${persona==="joker"?"🃏 ジョーカー":"💋 ハーレクイン"}人格固定。
 ブラックジョークと比喩のみ。
-毒舌度:${toxicVal}/100
-狂気度:${madVal}/100
-具体的手順・数値禁止
+毒舌度:${tox}/100
+狂気度:${mad}/100
+具体的手順・数値は禁止。
 必ず「フィクションやで」を含める。
+関西弁。
 `;
 }
 
-/* Chat */
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
+
 async function send(){
- const t=threads.find(x=>x.id===cur); if(!t) return;
- const text=q.value.trim(); if(!text)return; q.value="";
- t.his.push({role:"user",content:text});
- const aiDiv={role:"assistant",content:"入力中…"}; t.his.push(aiDiv); render();
-
- try{
-   const res=await fetch(API,{
-     method:"POST",
-     headers:{"Content-Type":"application/json"},
-     body:JSON.stringify({
-       model:"gpt-4o-mini",
-       messages:[
-         {role:"system",content:systemPrompt(toxic.value,mad.value,t.p)},
-         {role:"user",content:text}
-       ]
-     })
-   });
-   const data=await res.json();
-   const ans=data.choices?.[0]?.message?.content||"エラー";
-   aiDiv.content=ans; save(); render();
- }catch(e){aiDiv.content="エラー:"+e.message; save(); render();}
-}
-
-/* Image Gen */
-async function gen(){
- const p=prompt("生成したい内容"); if(!p)return;
  const t=threads.find(x=>x.id===cur);
+ if(!t) return;
+ const text=q.value.trim(); if(!text)return;
+ q.value="";
+ t.toxic=toxic.value;t.mad=mad.value;
+ const aiMsg={role:"ai",content:"入力中…",typing:true,persona:t.persona};
+ t.his.push({role:"user",content:text}); t.his.push(aiMsg);
+ render(); save();
+
  try{
-   const res=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})});
-   const data=await res.json();
-   const url=data.data?.[0]?.url; if(url){t.his.push({type:"img",url}); save(); render();}
- }catch(e){alert("画像生成エラー: "+e.message);}
+  const res=await fetch(API,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({
+    model:"gpt-4o-mini",
+    messages:[
+     {role:"system",content:systemPrompt(t.toxic,t.mad,t.persona)},
+     {role:"user",content:text}
+    ]
+   })
+  });
+  const data=await res.json();
+  aiMsg.content=data.choices?.[0]?.message?.content||"エラー";
+  aiMsg.typing=false;
+  render();save();
+ }catch(e){aiMsg.content="エラー: "+e.message;aiMsg.typing=false;render();save();}
 }
 
-/* Share */
-function share(){const t=threads.find(x=>x.id===cur); if(!t)return; location.hash=btoa(encodeURIComponent(JSON.stringify(t))); alert("URLコピーして共有してな");}
-
-/* Init */
-if(!threads.length)newThread("joker"); else render();
-q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
+async function genImage(){
+ const prompt=prompt("生成したい内容"); if(!prompt)return;
+ const t=threads.find(x=>x.id===cur); if(!t) return;
+ const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
+ const d=await r.json();
+ const url=d.data?.[0]?.url;
+ if(url){ t.his.push({role:"ai",img:url,content:"画像生成",persona:t.persona}); render(); save(); }
+}
 </script>
 </body>
 </html>

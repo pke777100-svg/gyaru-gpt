@@ -6,130 +6,180 @@
 <title>waru GPT</title>
 <style>
 :root{
- --bg:#f7f7f8; --chat:#fff; --user:#dcf8c6; --joker:#ffeedd; --harley:#ffe4e1;
+ --bg:#f7f7f8; --side:#202123; --chat:#fff; --user:#dcf8c6; --input:#fff; --line-bg:#e5ddd5;
+ --blue:#1a73e8
 }
 body{margin:0;font-family:-apple-system;background:var(--bg);height:100vh;overflow:hidden}
-.app{display:flex;flex-direction:column;height:100%}
+.app{display:flex;height:100%}
 
-/* chat area */
-.chat{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
-.bubble{padding:10px;border-radius:10px;max-width:75%;white-space:pre-wrap;position:relative}
-.user{align-self:flex-end;background:var(--user)}
-.ai{align-self:flex-start;background:var(--chat);border:1px solid #ddd}
-.typing{color:#007aff;animation:blink 1s step-start infinite}
-@keyframes blink{50%{opacity:0}}
+/* sidebar */
+.side{position:fixed;top:0;left:0;width:260px;height:100%;background:var(--side);color:#fff;transform:translateX(-100%);transition:.25s;display:flex;flex-direction:column;z-index:20}
+.side.open{transform:translateX(0)}
+.side h1{font-size:14px;margin:10px}
+.side input,.side button{margin:6px;border-radius:6px;border:0;padding:8px}
+.list{flex:1;overflow:auto}
+.item{padding:10px;border-bottom:1px solid #2a2b32;display:flex;align-items:center;gap:6px;cursor:pointer}
+.item.active{background:#2a2b32}
+.item span.title{flex:1}
+.more{padding:4px 8px;font-size:20px;color:#aaa}
 
-/* controls */
-.controls{padding:10px;background:var(--chat);display:flex;flex-direction:column;gap:4px}
-textarea{width:100%;font-size:16px;resize:none}
-button{padding:8px;font-size:16px}
-.menu{display:flex;gap:4px;margin-bottom:4px}
-.menu button{flex:1}
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+.overlay.show{display:block}
 
-/* persona background */
-.joker{background:var(--joker)}
-.harley{background:var(--harley)}
+/* main */
+.main{flex:1;display:flex;flex-direction:column}
+.top{padding:10px;background:var(--chat);border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center}
+.chat{flex:1;overflow:auto;padding:12px;background:var(--chat);scroll-behavior:smooth}
+.msg{display:flex;margin:4px 0;flex-wrap:wrap}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:70%;padding:10px;border-radius:12px;white-space:pre-wrap;word-break:break-word}
+.msg.user .bubble{background:var(--user)}
+.msg.ai .bubble{background:var(--chat);border:1px solid #ddd}
+.controls{padding:10px;background:var(--chat);border-top:1px solid #ddd;display:flex;flex-direction:column;gap:4px}
+textarea{width:100%;font-size:16px;padding:8px;border-radius:8px;border:1px solid #ccc;resize:none}
+button{padding:8px;border-radius:6px;border:0;cursor:pointer}
+.progress{height:4px;background:var(--blue);width:0;transition:width .1s}
+.menuBox{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:12px 12px 0 0;display:none;z-index:30;padding:10px}
+.menuBox button{width:100%;padding:12px;margin:6px 0;font-size:16px}
 
-/* … menu */
-.options{position:absolute;top:0;right:-40px;display:flex;flex-direction:column;gap:2px}
-.options button{padding:2px 4px;font-size:12px}
+/* LINE風切替 */
+.line .chat{background:var(--line-bg)}
+.line .msg.ai .bubble{background:#fff;border:1px solid #ccc;border-radius:20px 20px 20px 0}
+.line .msg.user .bubble{background:#dcf8c6;border-radius:20px 20px 0 20px}
+
+/* 入力中点滅 */
+@keyframes blink {0%,100%{opacity:1}50%{opacity:0.2}}
+.typing{color:var(--blue);animation:blink 1s infinite}
+
+/* iPhone対応 */
+@supports (-webkit-overflow-scrolling:touch){.chat{overflow-scrolling:touch}}
 </style>
 </head>
 <body>
 
-<div class="app">
-  <div class="menu">
-    <button onclick="setPersona('joker')">🃏ジョーカー</button>
-    <button onclick="setPersona('harley')">💋ハーレクイン</button>
-    <button onclick="setPersona('both')">👥両方</button>
+<div class="overlay" id="ov" onclick="toggleSide(false);closeMenu()"></div>
+
+<!-- sidebar -->
+<div class="side" id="side">
+ <h1>waru GPT</h1>
+ <input placeholder="検索" oninput="render(this.value)">
+ <button onclick="newThread('joker')">🃏 ジョーカー</button>
+ <button onclick="newThread('harley')">💋 ハーレクイン</button>
+ <button onclick="newThread('ai')">🤖 無機質AI</button>
+ <div class="list" id="threads"></div>
+ <button onclick="share()">🔗 共有URL</button>
+ <button onclick="toggleLine()">💬 LINE風切替</button>
+</div>
+
+<!-- main -->
+<div class="app" id="app">
+ <div class="main">
+  <div class="top">
+   <span onclick="toggleSide()">☰</span><b>Chat</b>
   </div>
   <div class="chat" id="chat"></div>
+  <div class="progress" id="prog"></div>
   <div class="controls">
-    <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
-    <button onclick="send()">送信</button>
-    <button onclick="genImage()">🎨 画像生成</button>
-    <label>毒舌度 <input type="range" id="toxic" min="0" max="100" value="50"></label>
-    <label>狂気度 <input type="range" id="mad" min="0" max="100" value="50"></label>
+   <textarea id="q" rows="2" placeholder="Enter送信 / Shift+Enter改行"></textarea>
+   <div style="display:flex;gap:4px">
+     <button onclick="send()">送信</button>
+     <button onclick="gen()">🎨 画像生成</button>
+   </div>
   </div>
+ </div>
+</div>
+
+<!-- thread menu -->
+<div class="menuBox" id="menu">
+ <button onclick="renameThread()">✏️ 名前変更</button>
+ <button onclick="deleteThread()">🗑 削除</button>
+ <button onclick="closeMenu()">❌ キャンセル</button>
 </div>
 
 <script>
-const API="https://empty-night-6ba3.pke777100.workers.dev";
-const chat=document.getElementById("chat");
-const q=document.getElementById("q");
-let personaType="joker";
+const API="https://empty-night-6ba3.pke777100.workers.dev"; // Worker URL
+const side=document.getElementById("side"), ov=document.getElementById("ov"), threadsDiv=document.getElementById("threads"), chat=document.getElementById("chat"), q=document.getElementById("q"), menu=document.getElementById("menu"), app=document.getElementById("app"), prog=document.getElementById("prog");
 
-function setPersona(p){
- personaType=p;
- addMsg("ai","ペルソナを変更しました: "+p);
+let threads=JSON.parse(localStorage.getItem("THREADS")||"[]");
+let cur=localStorage.getItem("CUR");
+let menuId=null;
+let lineMode=false;
+
+/* UI */
+function toggleSide(v){const o=v!==undefined?v:!side.classList.contains("open");side.classList.toggle("open",o);ov.classList.toggle("show",o);}
+function toggleLine(){lineMode=!lineMode;app.classList.toggle("line",lineMode);}
+function save(){localStorage.setItem("THREADS",JSON.stringify(threads));localStorage.setItem("CUR",cur);}
+
+/* threads */
+function newThread(p){
+ const id="t"+Date.now();
+ threads.unshift({id,title:"New chat",p,his:[],slider:{toxic:50,mad:50}});
+ cur=id;save();render();toggleSide(false);
+}
+function openMenu(e,id){e.stopPropagation();menuId=id;menu.style.display="block";ov.classList.add("show");}
+function closeMenu(){menu.style.display="none";menuId=null;ov.classList.remove("show");}
+function renameThread(){const t=threads.find(x=>x.id===menuId);if(!t)return;const n=prompt("スレッド名",t.title);if(n){t.title=n;save();render();}closeMenu();}
+function deleteThread(){threads=threads.filter(x=>x.id!==menuId);if(cur===menuId)cur=threads[0]?.id||null;save();render();closeMenu();}
+
+/* render */
+function render(f=""){
+ threadsDiv.innerHTML="";
+ threads.filter(t=>t.title.includes(f)).forEach(t=>{
+  const d=document.createElement("div");
+  d.className="item"+(t.id===cur?" active":"");
+  d.innerHTML=`<span class="title">${t.title}</span><span class="more">⋯</span>`;
+  d.onclick=()=>{cur=t.id;save();render();toggleSide(false)};
+  d.querySelector(".more").onclick=e=>openMenu(e,t.id);
+  threadsDiv.appendChild(d);
+ });
+ chat.innerHTML="";
+ const t=threads.find(x=>x.id===cur); if(!t)return;
+ t.his.forEach(m=>{
+  if(m.type==="img"){chat.innerHTML+=`<div class="msg ai"><img class="gen" src="${m.url}"></div>`;}
+  else{chat.innerHTML+=`<div class="msg ${m.role}"><div class="bubble">${m.content}</div></div>`;}
+ });
+ chat.scrollTop=1e9;
 }
 
-function addMsg(role,content,cls){
- const div=document.createElement("div");
- div.className=role==="user"?"bubble user":"bubble ai";
- if(cls) div.classList.add(cls);
- div.textContent=content;
- chat.appendChild(div);
-chat.scrollTop=chat.scrollHeight;
- return div;
-}
+/* persona */
+function persona(p){if(p==="joker")return"🃏 ジョーカー";if(p==="harley")return"💋 ハーレクイン";return"🤖 無機質AI";}
 
-function updateMsg(div,content,cls){
- div.textContent=content;
- if(cls) div.classList.add(cls);
-chat.scrollTop=chat.scrollHeight;
-}
+/* chat */
+q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
 
 async function send(){
- const text=q.value.trim();
- if(!text) return;
- q.value="";
- addMsg("user",text);
- const aiDiv=addMsg("ai","入力中…","typing");
- const toxic=document.getElementById("toxic").value;
- const mad=document.getElementById("mad").value;
-
- const messages=[{role:"system",content:systemPrompt({toxic,mad},personaType)},{role:"user",content:text}];
+ const t=threads.find(x=>x.id===cur);if(!t)return;
+ const text=q.value.trim();if(!text)return;q.value="";
+ t.his.push({role:"user",content:text});
+ const aiDiv=addMsg("ai","入力中…");aiDiv.classList.add("typing");prog.style.width="0%";
+ let progress=0;const interval=setInterval(()=>{progress+=5;if(progress>95)progress=95;prog.style.width=progress+"%";},100);
 
  try{
-   const res=await fetch(API,{
-     method:"POST",
-     headers:{"Content-Type":"application/json"},
-     body:JSON.stringify({model:"gpt-4o-mini",messages})
-   });
-   const data=await res.json();
-   const ans=data.choices?.[0]?.message?.content || "エラー";
-   updateMsg(aiDiv,ans);
- }catch(e){
-   updateMsg(aiDiv,"エラー: "+e.message);
- }
+   const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:text}], persona:t.p, slider:t.slider})});
+   const data=await res.json();clearInterval(interval);prog.style.width="100%";
+   const ans=data.choices?.[0]?.message?.content || "エラー";updateMsg(aiDiv,ans);aiDiv.classList.remove("typing");setTimeout(()=>{prog.style.width="0%";},500);
+   t.his.push({role:"assistant",content:ans});save();render();
+ }catch(e){clearInterval(interval);updateMsg(aiDiv,"エラー: "+e.message);aiDiv.classList.remove("typing");prog.style.width="0%";}
 }
 
-function systemPrompt(mem,persona){
- return `
-完全フィクションの脳内🧠世界。
-${persona==="joker"?"🃏ジョーカー":"💋ハーレクイン"}人格固定。
-ブラックジョークと比喩のみ。
-具体的手順・数値は禁止。
-必ず「フィクションやで」を含める。
-毒舌度:${mem.toxic}/100
-狂気度:${mem.mad}/100
-関西弁で出力する。
-`;
+function addMsg(role,content){const div=document.createElement("div");div.className=role==="user"?"bubble user":"bubble ai";div.textContent=content;chat.appendChild(div);chat.scrollTop=chat.scrollHeight;return div;}
+function updateMsg(div,content){div.textContent=content;chat.scrollTop=chat.scrollHeight;}
+
+/* image gen */
+async function gen(){
+ const p=prompt("生成したい内容");if(!p)return;
+ const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})});
+ const d=await r.json();const url=d.data?.[0]?.url;const t=threads.find(x=>x.id===cur);
+ t.his.push({type:"img",url});save();render();
 }
 
-async function genImage(){
- const prompt=prompt("生成したい内容");
- if(!prompt) return;
- try{
-   const r=await fetch(API+"/image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-   const d=await r.json();
-   const url=d.data?.[0]?.url;
-   if(url) addMsg("ai","画像生成",{cls:"gen"}).innerHTML=`<img src="${url}" style="max-width:75%;border-radius:10px">`;
- }catch(e){
-   addMsg("ai","画像生成エラー: "+e.message);
- }
-}
+/* share */
+function share(){const t=threads.find(x=>x.id===cur);if(!t)return;location.hash=btoa(encodeURIComponent(JSON.stringify(t)));alert("URLコピーして共有してな");}
+if(location.hash.length>1){try{const t=JSON.parse(decodeURIComponent(atob(location.hash.slice(1))));threads=[t];cur=t.id;save();}catch(e){}}
+
+/* init */
+if(!threads.length)newThread("joker");else render();
 </script>
 </body>
 </html>

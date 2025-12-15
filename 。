@@ -1,5 +1,4 @@
-# ファイル内容
-files_content = {
+
     "index.html": """
 <!DOCTYPE html>
 <html lang="ja">

@@ -1,6 +1,0 @@
-# BLACK AI クラウド接続設定
-# 内部処理・AI統合は非公開
-# フロントからアクセス可能なAPIのみ記載
-
-API_ENDPOINT=https://black-cloud.example.com/api
-API_KEY=***** (ユーザーには見えない)

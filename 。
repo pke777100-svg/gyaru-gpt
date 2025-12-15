@@ -1,0 +1,141 @@
+# ファイル内容
+files_content = {
+    "index.html": """
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLACK AI</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<header>
+  🖤 BLACK AI<br>
+  <span class="sub">全AI融合 × 自律進化 × ブラックボックス</span>
+</header>
+
+<div id="chat"></div>
+
+<div class="controls">
+  <input id="userInput" placeholder="BLACKに問いを投げる…">
+  <button onclick="sendMessage()">送信</button>
+  <button onclick="generatePDF()">PDF生成</button>
+  <button onclick="generatePNG()">PNG生成</button>
+</div>
+
+<div id="log"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
+""",
+    "style.css": """
+:root {
+  --bg: #0a0a0a;
+  --panel: #111;
+  --text: #e5e7eb;
+  --accent: #6366f1;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f9fafb;
+    --panel: #fff;
+    --text: #111827;
+    --accent: #6366f1;
+  }
+}
+
+body { margin:0; font-family:-apple-system; background:var(--bg); color:var(--text); }
+header { text-align:center; padding:12px; border-bottom:1px solid #222; }
+#chat { padding:12px; height:60vh; overflow-y:auto; }
+.controls { display:flex; gap:8px; padding:12px; }
+input { flex:1; padding:10px; border-radius:10px; border:none; background:var(--panel); color:var(--text); }
+button { padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; font-weight:600; }
+.msg { max-width:80%; margin-bottom:10px; padding:8px 12px; border-radius:12px; }
+.black { background:var(--panel); border:1px solid #222; }
+.user { background:var(--accent); color:#fff; margin-left:auto; }
+.sub { font-size:12px; color:#9ca3af; }
+""",
+    "script.js": """
+const chat = document.getElementById("chat");
+const input = document.getElementById("userInput");
+const log = document.getElementById("log");
+
+function addMsg(text, cls="black") {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerHTML = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function sendMessage() {
+  const text = input.value.trim();
+  if(!text) return;
+  addMsg(text, "user");
+  input.value = "";
+  simulateBLACKResponse(text);
+}
+
+function simulateBLACKResponse(msg) {
+  addMsg("BLACK解析中… ⚡", "black");
+  setTimeout(() => {
+    addMsg("構造を観測した。なぜ歪むか分析完了 ✔", "black");
+    log.innerHTML += `<p>${new Date().toLocaleTimeString()}: ${msg} → 観測完了</p>`;
+  }, 700);
+}
+
+function generatePDF() { addMsg("PDF生成中… 🔥", "black"); }
+function generatePNG() { addMsg("PNG生成中… 🔥", "black"); }
+""",
+    "manifest.json": """
+{
+  "name": "BLACK AI",
+  "short_name": "BLACK",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    { "src": "assets/icons/black-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/black-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+""",
+    "backend-config.md": """
+# BLACK AI クラウド接続設定
+# 内部処理・AI統合は非公開
+# フロントからアクセス可能なAPIのみ記載
+
+API_ENDPOINT=https://black-cloud.example.com/api
+API_KEY=***** (ユーザーには見えない)
+""",
+    "README.md": """
+# BLACK AI iPhoneフル版
+
+1. このフォルダをZIPとして展開
+2. サーバーにアップロード
+3. iPhone Safariで index.html にアクセス
+4. 「共有」→「ホーム画面に追加」でネイティブ感覚操作可能
+
+※ 内部AI統合・自律進化処理はクラウドで実行され、端末には渡りません。
+"""
+}
+
+# ファイル作成
+for filename, content in files_content.items():
+    path = os.path.join(folder_name, filename)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+# ZIP化
+with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for root, dirs, files in os.walk(folder_name):
+        for file in files:
+            full_path = os.path.join(root, file)
+            arcname = os.path.relpath(full_path, folder_name)
+            zipf.write(full_path, arcname)

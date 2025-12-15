@@ -1,0 +1,30 @@
+const chat = document.getElementById("chat");
+const input = document.getElementById("userInput");
+const log = document.getElementById("log");
+
+function addMsg(text, cls="black") {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerHTML = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function sendMessage() {
+  const text = input.value.trim();
+  if(!text) return;
+  addMsg(text, "user");
+  input.value = "";
+  simulateBLACKResponse(text);
+}
+
+function simulateBLACKResponse(msg) {
+  addMsg("BLACK解析中… ⚡", "black");
+  setTimeout(() => {
+    addMsg("構造を観測した。なぜ歪むか分析完了 ✔", "black");
+    log.innerHTML += `<p>${new Date().toLocaleTimeString()}: ${msg} → 観測完了</p>`;
+  }, 700);
+}
+
+function generatePDF() { addMsg("PDF生成中… 🔥", "black"); }
+function generatePNG() { addMsg("PNG生成中… 🔥", "black"); }
